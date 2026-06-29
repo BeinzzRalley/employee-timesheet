@@ -1,6 +1,7 @@
 // ── Data layer ───────────────────────────────────────
-// Assumes project lives at htdocs/timesheet/
-const API_BASE_URL = "https://labortrack-api.dcism.org/backend";
+// Backend layout: backend/{config,middleware,routes}/ — all route files
+// (auth.php, employees.php, etc.) live in backend/routes/.
+const API_BASE_URL = "https://labortrack-api.dcism.org/backend/routes";
 
 async function apiRequest(path, options = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -36,7 +37,7 @@ async function logoutRequest() {
 async function fetchAllData() {
   const safe = (p) => p.catch(() => []);
 
-  const [employees, departments, roles, shiftCategories, attendanceStatuses, leaveRecords, accounts, timeLogs] =
+  const [employees, departments, roles, shiftCategories, attendanceStatuses, leaveRecords, accounts, timeLogs, dashboardStats] =
     await Promise.all([
       apiRequest("/employees.php"),
       apiRequest("/departments.php"),
@@ -46,6 +47,7 @@ async function fetchAllData() {
       safe(apiRequest("/leave_records.php")),
       safe(apiRequest("/accounts.php")), // admin only
       safe(apiRequest("/time_logs.php")),
+      safe(apiRequest("/dashboard.php")),
     ]);
 
   return {
@@ -57,6 +59,7 @@ async function fetchAllData() {
     timeLogs,
     leaveRecords,
     accounts,
+    dashboardStats,
   };
 }
 
@@ -102,11 +105,55 @@ async function updateTimeLogRequest(logId, data) {
   });
 }
 
+// ── Dashboard ─────────────────────────────────────────
+// Server-computed summary stats (headcount, attendance, dept breakdown,
+// recent clock-ins for admin; personal clock/leave summary for employee).
+// Shape documented in backend/routes/dashboard.php.
+async function fetchDashboardStats() {
+  return apiRequest("/dashboard.php");
+}
+
+// ── Payroll (admin unless noted) ─────────────────────
+async function fetchPayrollPeriods(departmentId = null) {
+  const qs = departmentId ? `&department_id=${departmentId}` : "";
+  return apiRequest(`/payroll.php?action=periods${qs}`);
+}
+async function previewPayrollRequest(departmentId, year, month) {
+  return apiRequest(
+    `/payroll.php?action=preview&department_id=${departmentId}&year=${year}&month=${month}`
+  );
+}
+async function generatePayrollRequest(departmentId, year, month) {
+  return apiRequest("/payroll.php?action=generate", {
+    method: "POST",
+    body: JSON.stringify({ department_id: departmentId, year, month }),
+  });
+}
+async function fetchPayrollRecords(periodId) {
+  return apiRequest(`/payroll.php?action=records&period_id=${periodId}`);
+}
+async function updatePayrollRecordRequest(recordId, data) {
+  return apiRequest("/payroll.php?action=record", {
+    method: "PUT",
+    body: JSON.stringify({ ...data, record_id: recordId }),
+  });
+}
+async function approvePayrollPeriodRequest(periodId) {
+  return apiRequest(`/payroll.php?action=approve&period_id=${periodId}`, {
+    method: "POST",
+  });
+}
+// Employee: own approved pay history
+async function fetchMyPayrollHistory() {
+  return apiRequest("/payroll.php?action=my_history");
+}
+
 // ── Empty shape ───────────────────────────────────────
 function emptyDb() {
   return {
     departments: [], roles: [], employees: [],
     shiftCategories: [], attendanceStatuses: [],
     timeLogs: [], leaveRecords: [], accounts: [],
+    dashboardStats: null,
   };
 }

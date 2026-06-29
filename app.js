@@ -1,14 +1,29 @@
 // ── App state ─────────────────────────────────────────
-let db         = emptyDb();
-let account    = null;
-let activeView = "dashboard";
-let loadError  = null;
+let db          = emptyDb();
+let account     = null;
+let activeView  = "dashboard";
+let loadError   = null;
+let checkingSession = true; // true until the initial auth.php?action=me check resolves
 
 const root = document.getElementById("app");
 
 // ── Icons for clock/logs ──────────────────────────────
 const clockIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 const logsIcon  = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+
+// ── Boot screen ───────────────────────────────────────
+// Shown only while we're checking whether an existing session cookie is
+// still valid (auth.php?action=me). Keeps refreshes from flashing the
+// login screen before we know if the user is actually logged in.
+function renderBootScreen() {
+  const wrap = document.createElement("div");
+  wrap.className = "boot-screen";
+  wrap.innerHTML = `
+    <div class="boot-screen-icon">${icons.timer}</div>
+    <div class="boot-spinner"></div>
+  `;
+  return wrap;
+}
 
 // Admin nav
 const adminNav = [
@@ -40,6 +55,11 @@ async function loadDb() {
 // ── Render app ────────────────────────────────────────
 async function renderApp() {
   root.innerHTML = "";
+
+  if (checkingSession) {
+    root.appendChild(renderBootScreen());
+    return;
+  }
 
   if (!account) {
     root.appendChild(renderLogin(async acc => {
@@ -126,4 +146,25 @@ async function renderApp() {
 }
 
 // ── Boot ──────────────────────────────────────────────
-renderApp();
+// On a fresh page load (including refresh/Ctrl+R), `account` always starts
+// null in JS — but the PHPSESSID cookie may still be valid server-side.
+// Ask the backend before deciding to show the login screen, so a reload
+// doesn't force the user to log in again while their session is still good.
+async function boot() {
+  renderApp(); // shows the boot screen immediately (checkingSession is true)
+
+  try {
+    account = await apiRequest("/auth.php?action=me");
+  } catch (err) {
+    account = null; // no valid session (or it expired) — show login normally
+  }
+
+  if (account) {
+    await loadDb();
+  }
+
+  checkingSession = false;
+  renderApp();
+}
+
+boot();

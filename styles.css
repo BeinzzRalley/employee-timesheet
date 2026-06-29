@@ -44,6 +44,39 @@ body {
   min-height: 100vh;
 }
 
+/* ── Boot screen (shown while checking existing session) ── */
+.boot-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: #f8f9fb;
+}
+.boot-screen-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: var(--indigo-600);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.boot-screen-icon svg { width: 24px; height: 24px; }
+.boot-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--indigo-100);
+  border-top-color: var(--indigo-600);
+  animation: boot-spin 0.7s linear infinite;
+}
+@keyframes boot-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Sidebar ───────────────────────────────────────── */
 .sidebar {
   width: 220px;

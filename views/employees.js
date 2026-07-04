@@ -265,22 +265,61 @@ function renderEmployees(db, onDbChange) {
     });
   }
 
-  async function toggleEmployeeStatus(emp) {
+  // ── Deactivate/Reactivate confirmation modal ──────────
+  function toggleEmployeeStatus(emp) {
     const isActive = emp.employment_status === "Active";
     const newStatus = isActive ? "Inactive" : "Active";
-    const msg = isActive
-      ? `Deactivate ${emp.full_name}? They will be marked Inactive.`
-      : `Reactivate ${emp.full_name}? They will be marked Active.`;
-    if (!confirm(msg)) return;
-    try {
-      await updateEmployeeRequest(emp.employee_id, { ...emp, employment_status: newStatus });
-      db.employees = await apiRequest("/employees.php");
-      onDbChange(db);
-      showToast(`${emp.full_name} marked as ${newStatus}.`, "success");
-      refresh();
-    } catch (err) {
-      showToast(err.message || "Could not update status.", "error");
-    }
+
+    const body = document.createElement("div");
+    body.style.display = "flex";
+    body.style.flexDirection = "column";
+    body.style.gap = "18px";
+
+    const message = document.createElement("p");
+    message.className = "text-sm";
+    message.textContent = isActive
+      ? `Are you sure you want to deactivate ${emp.full_name}? They will be marked Inactive.`
+      : `Are you sure you want to reactivate ${emp.full_name}? They will be marked Active.`;
+
+    body.appendChild(message);
+
+    const footer = document.createElement("div");
+    footer.className = "modal-footer";
+
+    const keepBtn = document.createElement("button");
+    keepBtn.className = "btn btn-outline";
+    keepBtn.textContent = "Keep as " + emp.employment_status;
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = isActive ? "btn btn-danger" : "btn btn-primary";
+    confirmBtn.innerHTML = isActive ? `Deactivate` : `Reactivate`;
+
+    footer.appendChild(keepBtn);
+    footer.appendChild(confirmBtn);
+    body.appendChild(footer);
+
+    const { close } = openModal({
+      title: isActive ? "Deactivate Employee" : "Reactivate Employee",
+      body,
+    });
+
+    keepBtn.addEventListener("click", close);
+
+    confirmBtn.addEventListener("click", async () => {
+      confirmBtn.disabled = true;
+
+      try {
+        await updateEmployeeRequest(emp.employee_id, { ...emp, employment_status: newStatus });
+        db.employees = await apiRequest("/employees.php");
+        onDbChange(db);
+        close();
+        showToast(`${emp.full_name} marked as ${newStatus}.`, "success");
+        refresh();
+      } catch (err) {
+        showToast(err.message || "Could not update status.", "error");
+        confirmBtn.disabled = false;
+      }
+    });
   }
 
   render();

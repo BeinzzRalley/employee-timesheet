@@ -86,17 +86,56 @@ function renderAccounts(db, onDbChange) {
     card.appendChild(buildTable(["Employee", "Username", "Access Level", ""], rows));
   }
 
-  async function confirmDelete(a) {
-    if (!confirm(`Delete account "${a.username}"? This cannot be undone.`)) return;
-    try {
-      await deleteAccountRequest(a.account_id);
-      db.accounts = await apiRequest("/accounts.php");
-      onDbChange(db);
-      showToast("Account deleted.", "success");
-      refresh();
-    } catch (err) {
-      showToast(err.message || "Could not delete account.", "error");
-    }
+  // ── Delete confirmation modal ─────────────────────────
+  function confirmDelete(a) {
+    const body = document.createElement("div");
+    body.style.display = "flex";
+    body.style.flexDirection = "column";
+    body.style.gap = "18px";
+
+    const message = document.createElement("p");
+    message.className = "text-sm";
+    message.textContent = `Are you sure you want to delete the account "${a.username}"? This action cannot be undone.`;
+
+    body.appendChild(message);
+
+    const footer = document.createElement("div");
+    footer.className = "modal-footer";
+
+    const keepBtn = document.createElement("button");
+    keepBtn.className = "btn btn-outline";
+    keepBtn.textContent = "Keep Account";
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn btn-danger";
+    deleteBtn.innerHTML = `Delete Account`;
+
+    footer.appendChild(keepBtn);
+    footer.appendChild(deleteBtn);
+    body.appendChild(footer);
+
+    const { close } = openModal({
+      title: "Delete Account",
+      body,
+    });
+
+    keepBtn.addEventListener("click", close);
+
+    deleteBtn.addEventListener("click", async () => {
+      deleteBtn.disabled = true;
+
+      try {
+        await deleteAccountRequest(a.account_id);
+        db.accounts = await apiRequest("/accounts.php");
+        onDbChange(db);
+        close();
+        showToast("Account deleted.", "success");
+        refresh();
+      } catch (err) {
+        showToast(err.message || "Could not delete account.", "error");
+        deleteBtn.disabled = false;
+      }
+    });
   }
 
   function openAccountModal(existing) {
@@ -122,10 +161,10 @@ function renderAccounts(db, onDbChange) {
     const availableEmps = db.employees.filter(e => !takenIds.has(e.employee_id));
 
     const empOpts = [["", "— No linked employee —"], ...availableEmps.map(e => [e.employee_id, e.full_name])];
-    const fEmp    = makeSelect(empOpts, data.employee_id ?? "");
-    const fUser   = makeInput("text",     data.username, "username");
-    const fEmail  = makeInput("email",    data.email,    "email@corp.ph");
-    const fPw     = makeInput("password", "",            "password");
+    const fEmp = makeSelect(empOpts, data.employee_id ?? "");
+    const fUser = makeInput("text", data.username, "username");
+    const fEmail = makeInput("email", data.email, "email@corp.ph");
+    const fPw = makeInput("password", "", "password");
     const fAccess = makeSelect([["admin", "Admin"], ["employee", "Employee"]], data.access_level);
 
     body.appendChild(buildField("Linked Employee (optional)", fEmp));
@@ -160,18 +199,18 @@ function renderAccounts(db, onDbChange) {
 
     saveBtn.addEventListener("click", async () => {
       const username = fUser.value.trim();
-      const email    = fEmail.value.trim();
-      const pw       = fPw.value.trim();
+      const email = fEmail.value.trim();
+      const pw = fPw.value.trim();
 
       if (!username) { errEl.textContent = "Username is required."; errEl.style.display = "block"; return; }
-      if (!email)    { errEl.textContent = "Email is required.";    errEl.style.display = "block"; return; }
+      if (!email) { errEl.textContent = "Email is required."; errEl.style.display = "block"; return; }
       if (!isEdit && !pw) { errEl.textContent = "Password is required."; errEl.style.display = "block"; return; }
       if (pw && pw.length < 6) { errEl.textContent = "Password must be at least 6 characters."; errEl.style.display = "block"; return; }
 
       const employeeId = fEmp.value === "" ? null : Number(fEmp.value);
 
       const payload = {
-        employee_id:  employeeId,
+        employee_id: employeeId,
         username,
         email,
         access_level: fAccess.value,

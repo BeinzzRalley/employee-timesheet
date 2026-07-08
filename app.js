@@ -169,6 +169,92 @@ async function renderApp() {
   root.appendChild(layout);
 }
 
+// ── Change Password Modal ─────────────────────────────
+// Self-service: any logged-in user can change their own password.
+// Add this function to app.js (outside renderApp), then call it
+// from the sidebar Change Password button.
+
+function openChangePasswordModal() {
+  const body = document.createElement("div");
+  body.style.display = "flex";
+  body.style.flexDirection = "column";
+  body.style.gap = "14px";
+
+  const fCurrent = makeInput("password", "", "Enter current password");
+  const fNew     = makeInput("password", "", "At least 6 characters");
+  const fConfirm = makeInput("password", "", "Re-enter new password");
+
+  body.appendChild(buildField("Current Password", fCurrent));
+  body.appendChild(buildField("New Password",     fNew));
+  body.appendChild(buildField("Confirm New Password", fConfirm));
+
+  const errEl = document.createElement("div");
+  errEl.className = "alert-error";
+  errEl.style.display = "none";
+  body.appendChild(errEl);
+
+  const footer = document.createElement("div");
+  footer.className = "modal-footer";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.className = "btn btn-outline";
+  cancelBtn.textContent = "Cancel";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "btn btn-primary";
+  saveBtn.innerHTML = `${icons.check} Change Password`;
+
+  footer.appendChild(cancelBtn);
+  footer.appendChild(saveBtn);
+  body.appendChild(footer);
+
+  const { close } = openModal({ title: "Change Password", body });
+
+  cancelBtn.addEventListener("click", close);
+
+  saveBtn.addEventListener("click", async () => {
+    const currentPassword = fCurrent.value;
+    const newPassword     = fNew.value;
+    const confirmPassword = fConfirm.value;
+
+    if (!currentPassword) {
+      errEl.textContent = "Please enter your current password.";
+      errEl.style.display = "block";
+      return;
+    }
+    if (newPassword.length < 6) {
+      errEl.textContent = "New password must be at least 6 characters.";
+      errEl.style.display = "block";
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      errEl.textContent = "New passwords do not match.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    errEl.style.display = "none";
+    saveBtn.disabled = true;
+
+    try {
+      await apiRequest("/auth.php?action=change_password", {
+        method: "POST",
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password:     newPassword,
+        }),
+      });
+      close();
+      showToast("Password changed successfully.", "success");
+    } catch (err) {
+      errEl.textContent = err.message || "Could not change password.";
+      errEl.style.display = "block";
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+}
+
 // ── Boot ──────────────────────────────────────────────
 async function boot() {
   renderApp();

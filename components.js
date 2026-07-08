@@ -80,8 +80,6 @@ function buildSidebar({ navItems, activeId, onNav, account, emp, onLogout }) {
   const aside = document.createElement("aside");
   aside.className = "sidebar";
 
-  // emp is null for accounts not linked to an employee record (e.g. a bare
-  // admin login). Fall back to the username in that case.
   const displayName = emp ? emp.full_name : account.username;
 
   aside.innerHTML = `
@@ -98,6 +96,7 @@ function buildSidebar({ navItems, activeId, onNav, account, emp, onLogout }) {
           <div class="sidebar-user-role">${account.access_level}</div>
         </div>
       </div>
+      <button class="logout-btn" id="change-pw-btn" style="margin-bottom:6px">${icons.key} Change Password</button>
       <button class="logout-btn" id="logout-btn">${icons.logout} Sign Out</button>
     </div>
   `;
@@ -113,6 +112,7 @@ function buildSidebar({ navItems, activeId, onNav, account, emp, onLogout }) {
   });
 
   aside.querySelector("#logout-btn").addEventListener("click", onLogout);
+  aside.querySelector("#change-pw-btn").addEventListener("click", openChangePasswordModal);
   return aside;
 }
 

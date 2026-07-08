@@ -172,11 +172,20 @@ function renderAdminPayroll(db, account, onDbChange) {
         approveBtn.addEventListener("click", () => approvePeriod(p));
       }
 
+      const unapproveBtn = document.createElement("button");
+      if (p.status === "Approved") {
+        unapproveBtn.className = "btn btn-ghost btn-sm";
+        unapproveBtn.style.color = "var(--red, #ef4444)";
+        unapproveBtn.textContent = "Unapprove";
+        unapproveBtn.addEventListener("click", () => unapprovePeriod(p));
+      }
+
       const actions = document.createElement("div");
       actions.style.display = "flex";
       actions.style.gap = "6px";
       actions.appendChild(viewBtn);
       if (p.status === "Draft") actions.appendChild(approveBtn);
+      if (p.status === "Approved") actions.appendChild(unapproveBtn);
 
       return [
         `<span class="font-medium text-sm">${p.department_name}</span>`,
@@ -223,6 +232,18 @@ function renderAdminPayroll(db, account, onDbChange) {
       await loadPeriods(filterDept.value);
     } catch (err) {
       showToast(err.message || "Could not approve period.", "error");
+    }
+  }
+
+  async function unapprovePeriod(p) {
+  const monthLabel = monthNames[p.period_month - 1];
+    if (!confirm(`Revert payroll for ${p.department_name} — ${monthLabel} ${p.period_year} back to Draft?`)) return;
+    try {
+      await apiRequest(`/payroll.php?action=unapprove&period_id=${p.period_id}`, { method: "POST" });
+      showToast("Payroll period reverted to Draft.", "success");
+      await loadPeriods(filterDept.value);
+    } catch (err) {
+      showToast(err.message || "Could not unapprove period.", "error");
     }
   }
 

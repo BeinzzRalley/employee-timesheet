@@ -143,6 +143,11 @@ async function approvePayrollPeriodRequest(periodId) {
     method: "POST",
   });
 }
+async function unapprovePayrollPeriodRequest(periodId) {
+  return apiRequest(`/payroll.php?action=unapprove&period_id=${periodId}`, {
+    method: "POST",
+  });
+}
 // Employee: own approved pay history
 async function fetchMyPayrollHistory() {
   return apiRequest("/payroll.php?action=my_history");

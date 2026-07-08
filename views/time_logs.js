@@ -1,9 +1,8 @@
-// ── Time Logs: two views ──────────────────────────────
 // "clock_in_out"  → Clock In / Out panel  (employee only)
 // "my_logs"       → Attendance history with day/week/month/year filter
 // Admin gets:     → Full log table with edit, same filter controls
 
-// ── Entry point called by app.js ─────────────────────
+// ── Entry point called by app.js 
 function renderTimeLogs(db, account, onDbChange) {
   return renderClockInOut(db, account, onDbChange);
 }
@@ -12,13 +11,12 @@ function renderMyLogs(db, account, onDbChange) {
   return renderLogsView(db, account, onDbChange);
 }
 
+// clocked in now
 function renderClockedInNow(db, account, onDbChange) {
   return renderClockedInNowView(db, account, onDbChange);
 }
 
-// ═════════════════════════════════════════════════════
 // CLOCK IN / OUT VIEW
-// ═════════════════════════════════════════════════════
 function renderClockInOut(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
@@ -282,9 +280,8 @@ function renderClockInOut(db, account, onDbChange) {
   return page;
 }
 
-// ═════════════════════════════════════════════════════
 // CURRENTLY CLOCKED IN (admin only, today's active clock-ins)
-// ═════════════════════════════════════════════════════
+// clocked in now
 function renderClockedInNowView(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
@@ -430,9 +427,7 @@ function renderClockedInNowView(db, account, onDbChange) {
   return page;
 }
 
-// ═════════════════════════════════════════════════════
 // MY LOGS / ALL LOGS VIEW
-// ═════════════════════════════════════════════════════
 function renderLogsView(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
@@ -473,14 +468,41 @@ function renderLogsView(db, account, onDbChange) {
   filterBar.appendChild(monthSel);
 
   let selectedDept = "all";
+  let selectedEmployee = "all";
   let searchTerm = "";
 
   if (isAdmin) {
     const deptOptions = [["all", "All Departments"], ...db.departments.map(d => [String(d.department_id), d.department_name])];
     const deptSel = makeSelect(deptOptions, selectedDept);
     deptSel.style.width = "200px";
-    deptSel.addEventListener("change", () => { selectedDept = deptSel.value; renderLogsTable(); });
     filterBar.appendChild(deptSel);
+
+    // Employee dropdown — options narrow to whichever department is selected
+    const empOptionsAll = () => {
+      const emps = selectedDept === "all"
+        ? db.employees
+        : db.employees.filter(e => String(e.department_id) === selectedDept);
+      return [["all", "All Employees"], ...emps
+        .slice()
+        .sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""))
+        .map(e => [String(e.employee_id), e.full_name])];
+    };
+    let empSel = makeSelect(empOptionsAll(), selectedEmployee);
+    empSel.style.width = "200px";
+    empSel.addEventListener("change", () => { selectedEmployee = empSel.value; renderLogsTable(); });
+    filterBar.appendChild(empSel);
+
+    deptSel.addEventListener("change", () => {
+      selectedDept = deptSel.value;
+      // Reset + rebuild employee options whenever department changes
+      selectedEmployee = "all";
+      const freshEmpSel = makeSelect(empOptionsAll(), selectedEmployee);
+      freshEmpSel.style.width = "200px";
+      freshEmpSel.addEventListener("change", () => { selectedEmployee = freshEmpSel.value; renderLogsTable(); });
+      empSel.replaceWith(freshEmpSel);
+      empSel = freshEmpSel;
+      renderLogsTable();
+    });
 
     const searchWrap = document.createElement("div");
     searchWrap.style.cssText = "position:relative;flex:1;min-width:200px;max-width:280px";
@@ -508,6 +530,7 @@ function renderLogsView(db, account, onDbChange) {
         const emp = db.employees.find(e => e.employee_id === l.employee_id);
         if (!emp || String(emp.department_id) !== selectedDept) return false;
       }
+      if (isAdmin && selectedEmployee !== "all" && String(l.employee_id) !== selectedEmployee) return false;
       if (isAdmin && searchTerm && !(l.full_name || "").toLowerCase().includes(searchTerm)) return false;
       return true;
     });

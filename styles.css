@@ -325,6 +325,98 @@ td {
 .badge-pending   { background:#fffbeb; color:#92400e; border-color:#fde68a; }
 .badge-approved  { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
 .badge-rejected  { background:#fef2f2; color:#991b1b; border-color:#fca5a5; }
+.badge-info      { background:#eff6ff; color:#1e40af; border-color:#bfdbfe; }
+.badge-purple    { background:#f5f3ff; color:#5b21b6; border-color:#ddd6fe; }
+
+/* ── Audit log ─────────────────────────────────────── */
+.audit-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--gray-200);
+}
+.audit-tab {
+  border: none;
+  background: none;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-500);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color .15s, border-color .15s;
+}
+.audit-tab:hover { color: var(--gray-800); }
+.audit-tab.active {
+  color: var(--indigo-600);
+  border-bottom-color: var(--indigo-600);
+}
+.audit-tab-count {
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.audit-tab.active .audit-tab-count {
+  background: var(--indigo-100);
+  color: var(--indigo-700);
+}
+.audit-row-actor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.audit-detail-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--indigo-600);
+  font-size: 11.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+}
+.audit-detail-toggle:hover { text-decoration: underline; }
+.audit-detail-panel {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.audit-detail-row {
+  display: flex;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--gray-200);
+}
+.audit-detail-row:last-child { border-bottom: none; }
+.audit-detail-key {
+  color: var(--gray-500);
+  min-width: 110px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.audit-detail-val { color: var(--gray-800); word-break: break-word; }
+.audit-detail-arrow { color: var(--gray-400); margin: 0 4px; }
+.audit-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-top: 1px solid var(--gray-200);
+  font-size: 12.5px;
+  color: var(--gray-500);
+}
+.audit-pagination-btns { display: flex; gap: 6px; }
 
 /* ── Avatar ────────────────────────────────────────── */
 .avatar {

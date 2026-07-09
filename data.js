@@ -153,6 +153,26 @@ async function fetchMyPayrollHistory() {
   return apiRequest("/payroll.php?action=my_history");
 }
 
+// ── Audit Log (admin only, read-only) ─────────────────
+// Backend: backend/routes/audit_log.php
+// Tracks: account_create, account_update, account_delete,
+//         payroll_approve, payroll_unapprove
+function buildAuditLogQS(filters = {}) {
+  const params = [];
+  if (filters.action)      params.push(`action=${encodeURIComponent(filters.action)}`);
+  if (filters.targetType)  params.push(`target_type=${encodeURIComponent(filters.targetType)}`);
+  if (filters.targetId)    params.push(`target_id=${encodeURIComponent(filters.targetId)}`);
+  if (filters.accountId)   params.push(`account_id=${encodeURIComponent(filters.accountId)}`);
+  if (filters.from)        params.push(`from=${encodeURIComponent(filters.from)}`);
+  if (filters.to)          params.push(`to=${encodeURIComponent(filters.to)}`);
+  params.push(`limit=${filters.limit || 25}`);
+  params.push(`offset=${filters.offset || 0}`);
+  return params.length ? `?${params.join("&")}` : "";
+}
+async function fetchAuditLog(filters = {}) {
+  return apiRequest(`/audit_log.php${buildAuditLogQS(filters)}`);
+}
+
 // ── Reports (admin only) ──────────────────────────────
 function buildReportQS({ departmentId, year, month }) {
   const params = [];

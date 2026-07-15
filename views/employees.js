@@ -64,18 +64,15 @@ function renderEmployees(db, onDbChange) {
     page.appendChild(card);
   }
 
-  function renderTable(card) {
+  async function renderTable(card) {
     const old = card.querySelector(".table-wrap, .table-empty-wrap");
     if (old) old.remove();
 
-    // Apply both filters
-    const filtered = db.employees.filter(e => {
-      const matchSearch = e.full_name.toLowerCase().includes(searchVal.toLowerCase()) ||
-                          (e.email || "").toLowerCase().includes(searchVal.toLowerCase());
-      const matchDept   = filterDeptId === "" ||
-                          String(e.department_id) === String(filterDeptId);
-      return matchSearch && matchDept;
-    });
+    // Ask backend for filtered results
+    const params = new URLSearchParams();
+    if (searchVal)    params.set('search', searchVal);
+    if (filterDeptId) params.set('department_id', filterDeptId);
+    const filtered = await apiRequest(`/employees.php?${params.toString()}`);
 
     // Active count badge strip
     const oldStrip = card.querySelector(".emp-summary-strip");

@@ -90,7 +90,7 @@ function renderLeaveRecords(db, account, onDbChange) {
     page.appendChild(card);
   }
 
-  function renderTable(card) {
+  async function renderTable(card) {
     const old = card.querySelector(".table-wrap, .table-empty-wrap");
     if (old) old.remove();
 
@@ -98,14 +98,11 @@ function renderLeaveRecords(db, account, onDbChange) {
       ? db.leaveRecords
       : db.leaveRecords.filter(l => l.employee_id === account.employee_id);
 
-    const filtered = source.filter(l => {
-      const name = (l.full_name || "").toLowerCase();
-      const type = (l.leave_type || "").toLowerCase();
-      const q    = searchVal.toLowerCase();
-      const matchSearch  = name.includes(q) || type.includes(q);
-      const matchStatus  = filterStatus === "" || l.leave_status === filterStatus;
-      return matchSearch && matchStatus;
-    });
+    // Backend filtering — search and status sent as query params
+    const leaveParams = new URLSearchParams();
+    if (searchVal)    leaveParams.set('search', searchVal);
+    if (filterStatus) leaveParams.set('status', filterStatus);
+    const filtered = await apiRequest(`/leave_records.php?${leaveParams.toString()}`);
 
     const headers = isAdmin
       ? ["Employee", "Leave Type", "From", "To", "Status", "Remarks", ""]

@@ -521,19 +521,16 @@ function renderLogsView(db, account, onDbChange) {
   yearSel.addEventListener("change", () => { selectedYear = yearSel.value; renderLogsTable(); });
   monthSel.addEventListener("change", () => { selectedMonth = monthSel.value; renderLogsTable(); });
 
-  function applyFilters(logs) {
-    return logs.filter(l => {
-      const d = new Date(l.clock_in);
-      if (selectedYear !== "all" && d.getFullYear() !== Number(selectedYear)) return false;
-      if (selectedMonth !== "all" && (d.getMonth() + 1) !== Number(selectedMonth)) return false;
-      if (isAdmin && selectedDept !== "all") {
-        const emp = db.employees.find(e => e.employee_id === l.employee_id);
-        if (!emp || String(emp.department_id) !== selectedDept) return false;
-      }
-      if (isAdmin && selectedEmployee !== "all" && String(l.employee_id) !== selectedEmployee) return false;
-      if (isAdmin && searchTerm && !(l.full_name || "").toLowerCase().includes(searchTerm)) return false;
-      return true;
-    });
+  async function applyFilters() {
+    // Backend filtering — send all active filter values as query params
+    const p = new URLSearchParams();
+    if (selectedYear  !== "all") p.set('year',        selectedYear);
+    if (selectedMonth !== "all") p.set('month',       selectedMonth);
+    if (isAdmin && selectedDept     !== "all") p.set('department_id', selectedDept);
+    if (isAdmin && selectedEmployee !== "all") p.set('employee_id',   selectedEmployee);
+    if (isAdmin && searchTerm)                 p.set('search',        searchTerm);
+    if (!isAdmin && empId) p.set('employee_id', String(empId));
+    return await apiRequest(`/time_logs.php?${p.toString()}`);
   }
 
   // Summary stats strip
@@ -547,11 +544,11 @@ function renderLogsView(db, account, onDbChange) {
   card.className = "card";
   page.appendChild(card);
 
-  function renderLogsTable() {
+  async function renderLogsTable() {
     card.innerHTML = "";
     statsStrip.innerHTML = "";
 
-    const filtered = applyFilters(baseSource);
+    const filtered = await applyFilters();
 
     // Compute summary stats
     const totalHours = filtered.reduce((s, l) => s + (l.total_hours ? Number(l.total_hours) : 0), 0);

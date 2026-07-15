@@ -1,18 +1,9 @@
-// ── Payroll view (admin) + My Pay History (employee) ─
-// Admin:    TSK-28 (payroll calc), TSK-29 (save records),
-//           TSK-37 (overtime display), TSK-40 (period filter)
-// Employee: TSK-39 (view own pay history)
-
-// ── Entry point ───────────────────────────────────────
 function renderPayroll(db, account, onDbChange) {
   return account.access_level === "admin"
     ? renderAdminPayroll(db, account, onDbChange)
     : renderMyPayHistory(db, account);
 }
 
-// ═════════════════════════════════════════════════════
-// ADMIN PAYROLL MANAGEMENT
-// ═════════════════════════════════════════════════════
 function renderAdminPayroll(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";

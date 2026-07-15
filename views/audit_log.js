@@ -1,9 +1,3 @@
-// ── Audit Log view (admin only, read-only) ────────────
-// Backend: backend/routes/audit_log.php
-// Tracks who created/updated/deleted accounts, and who approved/unapproved
-// payroll periods. Categorized into tabs by target_type so admins can jump
-// straight to "who touched accounts" vs "who approved payroll".
-
 const AUDIT_TABS = [
   {
     id: "all",

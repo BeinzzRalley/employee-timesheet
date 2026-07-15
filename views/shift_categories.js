@@ -1,8 +1,3 @@
-// ── Shift Categories view (admin only) — TSK-41 ───────
-// Admin views all shift categories in a table showing shift name,
-// start time, end time, and rate multiplier.
-// Admin can add a new shift or edit an existing one.
-
 function renderShiftCategories(db, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";

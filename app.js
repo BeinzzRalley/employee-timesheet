@@ -37,6 +37,8 @@ const adminNav = [
   { id: "my_logs",          label: "Time Logs",         icon: logsIcon        },
   { id: "payroll",          label: "Payroll",           icon: payIcon         },
   { id: "shift_categories", label: "Shift Categories",  icon: shiftIcon       },
+  { id: "employment_status", label: "Employment Status", icon: icons.users     },
+  { id: "work_schedules", label: "Work Schedules",       icon: shiftIcon       },
   { id: "reports",          label: "Reports",            icon: icons.barChart  },
   { id: "audit_log",        label: "Audit Log",          icon: icons.history   },
 ];
@@ -90,8 +92,8 @@ async function renderApp() {
 
   const isAdmin = account.access_level === "admin";
 
-  const allowedAdmin    = ["dashboard", "employees", "departments", "accounts",
-                           "leave_records", "clocked_in_now", "my_logs", "payroll", "shift_categories", "reports", "audit_log"];
+  const allowedAdmin = ["dashboard", "employees", "departments", "accounts",
+                       "leave_records", "clocked_in_now", "my_logs", "payroll", "shift_categories", "employment_status", "work_schedules", "reports", "audit_log"];
   const allowedEmployee = ["dashboard", "time_logs", "my_logs", "leave_records", "payroll"];
   const allowed = isAdmin ? allowedAdmin : allowedEmployee;
 
@@ -151,11 +153,16 @@ async function renderApp() {
       view = renderMyLogs(db, account, dbChangeHandler);
       break;
     case "payroll":
-      // Admin: full payroll management; Employee: own pay history
       view = renderPayroll(db, account, dbChangeHandler);
       break;
     case "shift_categories":
       view = isAdmin ? renderShiftCategories(db, dbChangeHandler) : renderDashboard(db, account);
+      break;
+    case "employment_status":
+      view = isAdmin ? renderEmploymentStatus(db, dbChangeHandler) : renderDashboard(db, account);
+      break;
+    case "work_schedules":
+      view = isAdmin ? renderWorkSchedules(db, dbChangeHandler) : renderDashboard(db, account);
       break;
     case "reports":
       view = isAdmin ? renderReports(db, dbChangeHandler) : renderDashboard(db, account);

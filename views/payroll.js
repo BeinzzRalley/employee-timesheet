@@ -559,7 +559,7 @@ function renderAdminPayroll(db, account, onDbChange) {
 // ═════════════════════════════════════════════════════
 // EMPLOYEE: MY PAY HISTORY (TSK-39)
 // ═════════════════════════════════════════════════════
-async function renderMyPayHistory(db, account) {
+function renderMyPayHistory(db, account) {
   const page = document.createElement("div");
   page.className = "page";
 

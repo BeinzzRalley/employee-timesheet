@@ -39,6 +39,7 @@ const SYSTEM_ADMIN_NAV = [
       { id: "leave_records",  label: "Leave Records",  icon: icons.fileText },
       { id: "leave_balances", label: "Leave Balances", icon: icons.fileText },
       { id: "time_log_claims", label: "OT Claims",     icon: icons.fileText },
+      { id: "incident_reports", label: "Attendance Reports", icon: icons.fileText },
       { id: "employment_history", label: "Employment History", icon: icons.history },
       { id: "employee_exits", label: "Employee Exits", icon: icons.users },
       { id: "clocked_in_now", label: "Clocked In Now", icon: icons.live     },
@@ -82,6 +83,7 @@ const SUPERVISOR_NAV = [
   { id: "employment_history", label: "Employment History", icon: icons.history },
   { id: "employee_exits", label: "Employee Exits", icon: icons.users     },
   { id: "time_log_claims", label: "OT Claims",    icon: icons.fileText  },
+  { id: "incident_reports", label: "Attendance Reports", icon: icons.fileText },
   { id: "time_logs",      label: "Clock In / Out", icon: icons.clock     },
   { id: "my_logs",        label: "My Time Logs",   icon: icons.calendar  },
 ];
@@ -91,6 +93,7 @@ const EMPLOYEE_NAV = [
   { id: "time_logs",     label: "Clock In / Out", icon: icons.clock     },
   { id: "my_logs",       label: "My Time Logs",   icon: icons.calendar  },
   { id: "time_log_claims", label: "OT Claims",    icon: icons.fileText  },
+  { id: "incident_reports", label: "Attendance Reports", icon: icons.fileText },
   { id: "leave_records", label: "My Leave",       icon: icons.fileText  },
   { id: "leave_balances", label: "My Leave Balances", icon: icons.fileText  },
   { id: "employment_history", label: "My History", icon: icons.history  },
@@ -146,6 +149,8 @@ function renderView(viewId, db, account, onDbChange) {
       return renderLeaveRecords(db, account, onDbChange);
     case "time_log_claims":
       return renderTimeLogClaims(db, account, onDbChange);
+    case "incident_reports":
+      return renderIncidentReports(db, account, onDbChange);
     case "clocked_in_now":
       return canViewClockedInNow(account)
         ? renderClockedInNow(db, account, onDbChange)

@@ -58,6 +58,7 @@ async function fetchAllData() {
     employmentHistory,
     employeeExits,
     leaveBalances,
+    incidentReports,
   ] = await Promise.all([
     apiRequest("/employees.php"),
     apiRequest("/departments.php"),
@@ -79,6 +80,7 @@ async function fetchAllData() {
     safe(apiRequest("/employment_history.php")),
     safe(apiRequest("/employee_exits.php")),
     safe(apiRequest("/leave_balances.php")),
+    safe(apiRequest("/incident_reports.php")),
   ]);
 
   return {
@@ -102,6 +104,7 @@ async function fetchAllData() {
     employmentHistory,
     employeeExits,
     leaveBalances,
+    incidentReports,
   };
 }
 
@@ -242,6 +245,20 @@ async function fetchLeaveBalances(params = "") {
   return apiRequest(`/leave_balances.php${qs}`);
 }
 
+// ── Attendance Incident Reports (incident_reports.php) ─
+// Buddy punching, no-show, unauthorized attendance, system error, fraud, etc.
+// Distinct from reports.php, which serves admin labor-cost analytics.
+async function fetchIncidentReports(params = "") {
+  const qs = params ? (params.startsWith("?") ? params : `?${params}`) : "";
+  return apiRequest(`/incident_reports.php${qs}`);
+}
+async function createIncidentReportRequest(body) {
+  return apiRequest("/incident_reports.php", { method: "POST", body: JSON.stringify(body) });
+}
+async function validateIncidentReportRequest(body) {
+  return apiRequest("/incident_reports.php", { method: "PUT", body: JSON.stringify(body) });
+}
+
 // ── Empty shape ───────────────────────────────────────
 function emptyDb() {
   return {
@@ -261,5 +278,6 @@ function emptyDb() {
     employmentHistory: [],
     employeeExits: [],
     leaveBalances: [],
+    incidentReports: [],
   };
 }

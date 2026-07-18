@@ -84,6 +84,7 @@ function badgeClass(label) {
     admin: "badge-admin", employee: "badge-employee",
     Present: "badge-present", Pending: "badge-pending",
     Approved: "badge-approved", Rejected: "badge-rejected",
+    Confirmed: "badge-rejected", Dismissed: "badge-inactive",
     Late: "badge-late", "On Leave": "badge-pending", "Half-Day": "badge-inactive",
   };
   return map[label] || "badge-employee";

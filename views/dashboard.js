@@ -75,6 +75,16 @@ function buildAdminStatGrid(stats, account) {
       <div class="stat-value sky">${h.not_clocked_in}</div>
       <div class="stat-sub">active employees today</div>
     </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending Claims</div>
+      <div class="stat-value amber">${stats.pending_claims ?? 0}</div>
+      <div class="stat-sub">OT / holiday claims to review</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending Reports</div>
+      <div class="stat-value amber">${stats.pending_reports ?? 0}</div>
+      <div class="stat-sub">attendance incidents to investigate</div>
+    </div>
   `;
   return grid;
 }
@@ -281,10 +291,20 @@ function buildEmployeeDashboard(db, account, stats, emp) {
         <div class="stat-value emerald">${stats.approved_leaves_this_month}</div>
         <div class="stat-sub">leave day(s)</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Claims</div>
+        <div class="stat-value amber">${stats.pending_claims ?? 0}</div>
+        <div class="stat-sub">OT / holiday claims</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Reports</div>
+        <div class="stat-value amber">${stats.pending_reports ?? 0}</div>
+        <div class="stat-sub">attendance reports filed</div>
+      </div>
       ${emp ? `
       <div class="stat-card">
-        <div class="stat-label">Hourly Rate</div>
-        <div class="stat-value indigo">₱${Number(emp.current_hourly_rate).toFixed(2)}</div>
+        <div class="stat-label">Work Schedule</div>
+        <div class="stat-value indigo">${stats.assigned_schedule ? stats.assigned_schedule.schedule_name : "Unassigned"}</div>
         <div class="stat-sub">${emp.role_name || "—"}</div>
       </div>
       <div class="stat-card">
@@ -311,8 +331,8 @@ function buildEmployeeDashboard(db, account, stats, emp) {
       </div>
       ${emp ? `
       <div class="stat-card">
-        <div class="stat-label">Hourly Rate</div>
-        <div class="stat-value indigo">₱${Number(emp.current_hourly_rate).toFixed(2)}</div>
+        <div class="stat-label">Employment Type</div>
+        <div class="stat-value indigo">${emp.employment_type_name || "—"}</div>
         <div class="stat-sub">${emp.role_name || "—"}</div>
       </div>
       <div class="stat-card">
@@ -401,5 +421,31 @@ function buildEmployeeDashboard(db, account, stats, emp) {
   detailGrid.appendChild(leavesCard);
 
   wrap.appendChild(detailGrid);
+
+  // ── Leave balance summary ─────────────────────────
+  const balances = stats && stats.leave_balance ? stats.leave_balance : [];
+  if (balances.length) {
+    const balCard = document.createElement("div");
+    balCard.className = "card";
+    balCard.style.marginTop = "20px";
+    balCard.innerHTML = `<div class="card-header">Leave Balance (${new Date().getFullYear()})</div>`;
+    balances.forEach(b => {
+      const item = document.createElement("div");
+      item.className = "pending-item";
+      item.innerHTML = `
+        <div class="pending-item-top">
+          <span class="pending-item-name">${b.leave_name}</span>
+          <span style="font-size:0.82rem;font-weight:700;color:#6366f1">${Number(b.remaining_days).toFixed(1)} days left</span>
+        </div>
+        <div class="pending-dates">
+          Entitled: ${Number(b.entitled_days).toFixed(1)} + ${Number(b.carried_over_days).toFixed(1)} carried over
+          · Used: ${Number(b.used_days).toFixed(1)}
+        </div>
+      `;
+      balCard.appendChild(item);
+    });
+    wrap.appendChild(balCard);
+  }
+
   return wrap;
 }

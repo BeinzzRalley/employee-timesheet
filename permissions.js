@@ -56,6 +56,13 @@ function isLeaveFullAdmin(account) {
   return isPureAdmin(account);
 }
 
+// ── Incident reports (incident_reports.php) ───────────
+/** Can confirm/dismiss attendance incident reports — PUT → requireRole([supervisor, payroll_admin, system_admin]) */
+function isReportValidator(account) {
+  const l = accessLevel(account);
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
+}
+
 function linkedEmployee(db, account) {
   if (!account || account.employee_id == null) return null;
   // eslint-disable-next-line eqeqeq
@@ -69,7 +76,7 @@ function departmentName(db, account) {
 
 // ── Employee CRUD (employees.php) ─────────────────────
 function canCreateEmployee(account) {
-  return isSystemAdmin(account); // POST → requireSystemAdmin()
+  return isSystemAdmin(account) || isPayrollAdmin(account); // POST → requirePayrollAdmin()
 }
 
 function canEditEmployee(account) {
@@ -93,11 +100,6 @@ function canClockIn(account) {
 function canViewClockedInNow(account) {
   const l = accessLevel(account);
   return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
-}
-
-// ── Payroll (payroll.php) ───────────────────────────
-function canManagePayroll(account) {
-  return isPureAdmin(account);
 }
 
 // ── Scope banner copy ───────────────────────────────

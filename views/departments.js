@@ -1,13 +1,4 @@
-// ── Departments view ───────────────────────────────────
-// Backend permissions (departments.php):
-//   GET    — any authenticated user (requireAuth)
-//   POST   — system_admin only (requireSystemAdmin)
-//   PUT    — system_admin only (requireSystemAdmin)
-//   DELETE — system_admin only (requireSystemAdmin)
-//
-// This view is only reachable via the nav for system_admin (see app.js),
-// but we still gate the write controls on `account` here defensively in
-// case this function is ever called from elsewhere.
+// Departments view
 
 function renderDepartments(db, account, onDbChange) {
   const page = document.createElement("div");
@@ -16,7 +7,7 @@ function renderDepartments(db, account, onDbChange) {
   const canManage = account && account.access_level === "system_admin";
 
   let searchVal   = "";
-  let deptSalaries = {}; // department_id → total net_pay from latest approved period
+  let deptSalaries = {};
 
   function refresh() {
     page.innerHTML = "";
@@ -32,14 +23,13 @@ function renderDepartments(db, account, onDbChange) {
     }
   }
 
-  // Fetch the most recent approved payroll period per department and sum net_pay
+  // loaddept
   async function loadDeptSalaries() {
     try {
-      // Get all approved periods
+      
       const periods = await fetchPayrollPeriods(null);
       const approved = periods.filter(p => p.status === "Approved");
 
-      // For each department, find its most recent approved period
       const latestPerDept = {};
       approved.forEach(p => {
         const key = p.department_id;
@@ -51,7 +41,6 @@ function renderDepartments(db, account, onDbChange) {
         }
       });
 
-      // Fetch records for each latest period and sum net_pay
       const fetches = Object.values(latestPerDept).map(async p => {
         try {
           const data = await fetchPayrollRecords(p.period_id);
@@ -90,7 +79,6 @@ function renderDepartments(db, account, onDbChange) {
     const card = document.createElement("div");
     card.className = "card";
 
-    // Loading state — show spinner while salaries load
     const loadingEl = document.createElement("div");
     loadingEl.style.cssText = "padding:12px 0;font-size:0.82rem;color:var(--text-muted);display:flex;align-items:center;gap:8px";
     loadingEl.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 0.7s linear infinite"></span> Loading salary totals…`;
@@ -113,7 +101,6 @@ function renderDepartments(db, account, onDbChange) {
 
     page.appendChild(card);
 
-    // Load salaries then render table
     loadDeptSalaries().then(() => {
       loadingEl.remove();
       renderTable(card);
@@ -203,9 +190,9 @@ function renderDepartments(db, account, onDbChange) {
     card.appendChild(table);
   }
 
-  // ── Add / Edit modal ──────────────────────────────
+  // Add / Edit
   function openDepartmentModal(existing) {
-    if (!canManage) return; // defensive — buttons that trigger this aren't rendered anyway
+    if (!canManage) return;
 
     const isEdit = !!existing;
     const data = isEdit ? { ...existing } : {

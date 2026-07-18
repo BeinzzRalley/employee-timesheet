@@ -1,4 +1,4 @@
-// ── Accounts view (admin only) ────────────────────────
+// Accounts view
 
 function renderAccounts(db, onDbChange) {
   const page = document.createElement("div");
@@ -82,7 +82,7 @@ function renderAccounts(db, onDbChange) {
     card.appendChild(buildTable(["Employee", "Username", "Access Level", ""], rows));
   }
 
-  // ── Delete confirmation modal ─────────────────────────
+  // Delete confirmation modal
   function confirmDelete(a) {
     const body = document.createElement("div");
     body.style.display = "flex";
@@ -148,7 +148,7 @@ function renderAccounts(db, onDbChange) {
     body.style.flexDirection = "column";
     body.style.gap = "14px";
 
-    // Only show employees that don't already have an account (or the current one)
+    // Wont show in search for accounts admin page
     const takenIds = new Set(
       db.accounts
         .filter(a => a.employee_id != null && a.account_id !== (existing && existing.account_id))

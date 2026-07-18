@@ -46,7 +46,6 @@ function renderEmployeeExits(db, account, onDbChange) {
       addBtn
     ));
 
-    // Table container card
     const card = document.createElement("div");
     card.className = "card";
 
@@ -156,9 +155,8 @@ function renderEmployeeExits(db, account, onDbChange) {
       fEmp.className = "text-sm font-medium";
       fEmp.textContent = data.employee_name;
     } else {
-      // List active/current employees to choose from
+      // List employees
       const activeEmps = db.employees.filter(e => {
-        // filter out employees that already have an exit logged, or list all
         return !exitRows.some(ex => ex.employee_id === e.employee_id);
       });
       const empOpts = [["", "Select Employee"], ...activeEmps.map(e => [e.employee_id, `${e.first_name} ${e.last_name}`])];
@@ -188,7 +186,7 @@ function renderEmployeeExits(db, account, onDbChange) {
     checkWrap.appendChild(fVoluntary);
     checkWrap.appendChild(document.createTextNode("Voluntary Exit (Self-initiated)"));
 
-    // Status target dropdown (admins only, on POST)
+    // Status target dropdown
     const statusList = (db.employmentStatuses || []).filter(s => s.status_name !== "Active");
     const statusOpts = statusList.map(s => [s.employment_status_id, s.status_name]);
     const fStatus = makeSelect(statusOpts, data.inactive_status_id || 2);
@@ -205,7 +203,6 @@ function renderEmployeeExits(db, account, onDbChange) {
     body.appendChild(grid);
     body.appendChild(checkWrap);
     
-    // Only display target status selection for new exits (on POST)
     if (!isEdit) {
       body.appendChild(buildField("Update Employee Status To", fStatus));
     }
@@ -269,7 +266,6 @@ function renderEmployeeExits(db, account, onDbChange) {
           body: JSON.stringify(payload),
         });
         
-        // Reload employee details from DB so cache is fresh
         if (!isEdit && onDbChange) {
           const updatedEmployees = await apiRequest("/employees.php");
           db.employees = updatedEmployees;

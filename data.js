@@ -1,6 +1,4 @@
-// ── Data layer ───────────────────────────────────────
-// Backend layout: backend/{config,middleware,routes}/ — all route files
-// (auth.php, employees.php, etc.) live in backend/routes/.
+// Data
 const API_BASE_URL = "https://labortrack-api.dcism.org/backend/routes";
 
 async function apiRequest(path, options = {}) {
@@ -21,7 +19,7 @@ async function apiRequest(path, options = {}) {
   return body.data;
 }
 
-// ── Auth ──────────────────────────────────────────────
+// Auth
 async function loginRequest(username, password) {
   return apiRequest("/auth.php?action=login", {
     method: "POST",
@@ -33,7 +31,7 @@ async function logoutRequest() {
   return apiRequest("/auth.php?action=logout", { method: "POST" });
 }
 
-// ── Bulk fetch ────────────────────────────────────────
+// Fetch
 async function fetchAllData() {
   const safe = (p) => p.catch(() => []);
 
@@ -108,7 +106,7 @@ async function fetchAllData() {
   };
 }
 
-// ── Employees ─────────────────────────────────────────
+// Employees
 async function createEmployeeRequest(employee) {
   return apiRequest("/employees.php", { method: "POST", body: JSON.stringify(employee) });
 }
@@ -119,7 +117,7 @@ async function updateEmployeeRequest(employeeId, employee) {
   });
 }
 
-// ── Accounts ──────────────────────────────────────────
+// Accounts
 async function createAccountRequest(account) {
   return apiRequest("/accounts.php", { method: "POST", body: JSON.stringify(account) });
 }
@@ -133,7 +131,7 @@ async function deleteAccountRequest(accountId) {
   return apiRequest(`/accounts.php?id=${accountId}`, { method: "DELETE" });
 }
 
-// ── Time Logs ─────────────────────────────────────────
+// Time Logs
 async function clockInRequest() {
   return apiRequest("/time_logs.php?action=clock_in", { method: "POST" });
 }
@@ -147,7 +145,7 @@ async function updateTimeLogRequest(logId, data) {
   });
 }
 
-// ── Time Log Claims ───────────────────────────────────
+// Time Log Claims
 async function fetchTimeLogClaims(params = "") {
   const qs = params ? (params.startsWith("?") ? params : `?${params}`) : "";
   return apiRequest(`/time_log_claims.php${qs}`);
@@ -162,12 +160,12 @@ async function deleteTimeLogClaimRequest(claimId) {
   return apiRequest(`/time_log_claims.php?id=${claimId}`, { method: "DELETE" });
 }
 
-// ── Dashboard ─────────────────────────────────────────
+// Dashboard
 async function fetchDashboardStats() {
   return apiRequest("/dashboard.php");
 }
 
-// ── Audit Log (admin only, read-only) ─────────────────
+// Audit Log (admin only, read-only)
 function buildAuditLogQS(filters = {}) {
   const params = [];
   if (filters.action)      params.push(`action=${encodeURIComponent(filters.action)}`);
@@ -184,7 +182,7 @@ async function fetchAuditLog(filters = {}) {
   return apiRequest(`/audit_log.php${buildAuditLogQS(filters)}`);
 }
 
-// ── Leave Types ───────────────────────────────────────
+// Leave Types
 async function fetchLeaveTypes() {
   return apiRequest("/leave_types.php");
 }
@@ -198,7 +196,7 @@ async function deleteLeaveType(body) {
   return apiRequest("/leave_types.php", { method: "DELETE", body: JSON.stringify(body) });
 }
 
-// ── Reports ───────────────────────────────────────────
+// Reports
 function buildReportQS(filters) {
   const params = [];
   if (filters.departmentId) {
@@ -228,26 +226,24 @@ async function fetchEmployeeEarningsReport(filters) {
   return apiRequest(`/reports.php?action=employee_earnings${buildReportQS(filters)}`);
 }
 
-// ── Employment History ────────────────────────────────
+// Employment History
 async function fetchEmploymentHistory(params = "") {
   const qs = params ? (params.startsWith("?") ? params : `?${params}`) : "";
   return apiRequest(`/employment_history.php${qs}`);
 }
 
-// ── Employee Exits ────────────────────────────────────
+// Employee Exits
 async function fetchEmployeeExits() {
   return apiRequest("/employee_exits.php");
 }
 
-// ── Leave Balances ────────────────────────────────────
+// Leave Balances
 async function fetchLeaveBalances(params = "") {
   const qs = params ? (params.startsWith("?") ? params : `?${params}`) : "";
   return apiRequest(`/leave_balances.php${qs}`);
 }
 
-// ── Attendance Incident Reports (incident_reports.php) ─
-// Buddy punching, no-show, unauthorized attendance, system error, fraud, etc.
-// Distinct from reports.php, which serves admin labor-cost analytics.
+// Incident Reports
 async function fetchIncidentReports(params = "") {
   const qs = params ? (params.startsWith("?") ? params : `?${params}`) : "";
   return apiRequest(`/incident_reports.php${qs}`);
@@ -259,7 +255,7 @@ async function validateIncidentReportRequest(body) {
   return apiRequest("/incident_reports.php", { method: "PUT", body: JSON.stringify(body) });
 }
 
-// ── Empty shape ───────────────────────────────────────
+// Empty
 function emptyDb() {
   return {
     departments: [], roles: [], employees: [],

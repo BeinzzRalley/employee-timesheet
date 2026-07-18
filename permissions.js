@@ -1,6 +1,4 @@
-// ── Role & permission helpers ───────────────────────
-// Mirrors backend access_level values in middleware/helpers.php:
-// employee, supervisor, payroll_admin, system_admin
+// Role & permissions/access level
 
 const ACCESS = {
   SYSTEM_ADMIN:  "system_admin",
@@ -56,7 +54,7 @@ function isLeaveFullAdmin(account) {
   return isPureAdmin(account);
 }
 
-// ── Incident reports (incident_reports.php) ───────────
+// Incident reports
 /** Can confirm/dismiss attendance incident reports — PUT → requireRole([supervisor, payroll_admin, system_admin]) */
 function isReportValidator(account) {
   const l = accessLevel(account);
@@ -65,7 +63,6 @@ function isReportValidator(account) {
 
 function linkedEmployee(db, account) {
   if (!account || account.employee_id == null) return null;
-  // eslint-disable-next-line eqeqeq
   return db.employees.find(e => e.employee_id == account.employee_id) || null;
 }
 
@@ -74,13 +71,13 @@ function departmentName(db, account) {
   return emp ? (emp.department_name || null) : null;
 }
 
-// ── Employee CRUD (employees.php) ─────────────────────
+// Employee CRUD
 function canCreateEmployee(account) {
-  return isSystemAdmin(account) || isPayrollAdmin(account); // POST → requirePayrollAdmin()
+  return isSystemAdmin(account) || isPayrollAdmin(account);
 }
 
 function canEditEmployee(account) {
-  return isSystemAdmin(account) || isPayrollAdmin(account); // PUT → requirePayrollAdmin()
+  return isSystemAdmin(account) || isPayrollAdmin(account);
 }
 
 function canViewEmployees(account) {
@@ -88,9 +85,9 @@ function canViewEmployees(account) {
   return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
 }
 
-// ── Time logs (time_logs.php) ─────────────────────────
+// Time logs
 function canEditTimeLogs(account) {
-  return isPureAdmin(account); // PUT → requirePayrollAdmin()
+  return isPureAdmin(account);
 }
 
 function canClockIn(account) {
@@ -102,7 +99,7 @@ function canViewClockedInNow(account) {
   return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
 }
 
-// ── Scope banner copy ───────────────────────────────
+// Scope banner
 function scopeBannerProps(db, account) {
   if (isSupervisor(account)) {
     const dept = departmentName(db, account);

@@ -1,7 +1,7 @@
-// ── Dashboard view ────────────────────────────────────
-// Employee: personal clock status, hours, leave counts
-// Supervisor: admin-style dashboard scoped to their department (backend)
-// Payroll / System Admin: company-wide workforce overview
+// Dashboard view
+// Employee - personal clock status, hours, leave counts
+// Supervisor - admin-style dashboard only to their dept
+// System Admin - overview of company
 
 function renderDashboard(db, account) {
   const page = document.createElement("div");
@@ -46,9 +46,8 @@ function renderDashboard(db, account) {
   return page;
 }
 
-// ═════════════════════════════════════════════════════
 // ADMIN DASHBOARD
-// ═════════════════════════════════════════════════════
+
 function buildAdminStatGrid(stats, account) {
   const h = stats.headcount;
   const scopeNote = isSupervisor(account) ? "in your department" : "across all departments";
@@ -97,7 +96,7 @@ function buildAdminDetailGrid(stats, account) {
     ? "Your Department Today"
     : "Department Attendance Today";
 
-  // ── Department attendance ─────────────────────────
+  // Department attendance
   const deptCard = document.createElement("div");
   deptCard.className = "card";
   deptCard.innerHTML = `<div class="card-header">${deptHeader}</div>`;
@@ -128,7 +127,7 @@ function buildAdminDetailGrid(stats, account) {
   }
   grid.appendChild(deptCard);
 
-  // ── Recent clock-ins ──────────────────────────────
+  // Recent clock-ins
   const recentCard = document.createElement("div");
   recentCard.className = "card";
   recentCard.innerHTML = `<div class="card-header">Recent Clock-Ins</div>`;
@@ -157,7 +156,7 @@ function buildAdminDetailGrid(stats, account) {
   }
   grid.appendChild(recentCard);
 
-  // ── Weekly attendance chart (TSK-36) ──────────────
+  // Weekly attendance chart
   grid.appendChild(buildWeeklyAttendanceChart(stats));
 
   return grid;
@@ -250,16 +249,12 @@ function buildAdminStatGridFallback(db, account) {
   return grid;
 }
 
-// ═════════════════════════════════════════════════════
-// EMPLOYEE DASHBOARD — proper personal overview
-// TSK-18: name, dept, clock-in status, summary
-// TSK-19: time logs list (recent 5)
-// TSK-20: most recent attendance records
-// ═════════════════════════════════════════════════════
+// EMPLOYEE DASHBOARD
+
 function buildEmployeeDashboard(db, account, stats, emp) {
   const wrap = document.createElement("div");
 
-  // ── Stat cards row ────────────────────────────────
+  // Stat cards row
   const grid = document.createElement("div");
   grid.className = "stat-grid";
 
@@ -314,7 +309,6 @@ function buildEmployeeDashboard(db, account, stats, emp) {
       </div>` : ""}
     `;
   } else {
-    // Fallback: compute from local db
     const myLeaves  = db.leaveRecords.filter(l => l.employee_id === account.employee_id);
     const pending   = myLeaves.filter(l => l.leave_status === "Pending").length;
     const approved  = myLeaves.filter(l => l.leave_status === "Approved").length;
@@ -344,11 +338,10 @@ function buildEmployeeDashboard(db, account, stats, emp) {
   }
   wrap.appendChild(grid);
 
-  // ── Two-column detail row ─────────────────────────
   const detailGrid = document.createElement("div");
   detailGrid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px";
 
-  // ── Recent time logs (TSK-19 / TSK-20) ───────────
+  // Recent time logs
   const logsCard = document.createElement("div");
   logsCard.className = "card";
   logsCard.innerHTML = `<div class="card-header">Recent Attendance</div>`;
@@ -388,7 +381,7 @@ function buildEmployeeDashboard(db, account, stats, emp) {
   }
   detailGrid.appendChild(logsCard);
 
-  // ── My leave requests ─────────────────────────────
+  // Leave requests
   const leavesCard = document.createElement("div");
   leavesCard.className = "card";
   leavesCard.innerHTML = `<div class="card-header">My Leave Requests</div>`;
@@ -422,7 +415,7 @@ function buildEmployeeDashboard(db, account, stats, emp) {
 
   wrap.appendChild(detailGrid);
 
-  // ── Leave balance summary ─────────────────────────
+  // Leave balance summary
   const balances = stats && stats.leave_balance ? stats.leave_balance : [];
   if (balances.length) {
     const balCard = document.createElement("div");

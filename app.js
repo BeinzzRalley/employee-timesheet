@@ -1,4 +1,4 @@
-// ── App state ─────────────────────────────────────────
+// App state
 let db            = emptyDb();
 let account       = null;
 let activeView    = "dashboard";
@@ -7,7 +7,6 @@ let checkingSession = true;
 
 const root = document.getElementById("app");
 
-// ── Boot screen ───────────────────────────────────────
 function renderBootScreen() {
   const wrap = document.createElement("div");
   wrap.className = "boot-screen";
@@ -18,11 +17,10 @@ function renderBootScreen() {
   return wrap;
 }
 
-// ── Access levels (alias for permissions.js) ─────────
+// Access levels
 const LEVEL = ACCESS;
 
-// ── Navigation ────────────────────────────────────────
-// Sidebar sections for admin roles; flat lists for supervisor/employee.
+// Navigation
 
 const SYSTEM_ADMIN_NAV = [
   {
@@ -118,7 +116,7 @@ function navForAccount(acc) {
   return EMPLOYEE_NAV;
 }
 
-// ── Data load ─────────────────────────────────────────
+// Data load
 async function loadDb() {
   try {
     db = await fetchAllData();
@@ -128,7 +126,7 @@ async function loadDb() {
   }
 }
 
-// ── View routing ──────────────────────────────────────
+// View routing
 function renderView(viewId, db, account, onDbChange) {
   const adminConfig = isAdminConfig(account);
 
@@ -192,7 +190,6 @@ function renderView(viewId, db, account, onDbChange) {
   }
 }
 
-// ── Render app ────────────────────────────────────────
 async function renderApp() {
   root.innerHTML = "";
 
@@ -261,7 +258,7 @@ async function renderApp() {
   root.appendChild(layout);
 }
 
-// ── Change Password Modal ─────────────────────────────
+// Change Password Modal
 function openChangePasswordModal() {
   const body = document.createElement("div");
   body.style.cssText = "display:flex;flex-direction:column;gap:14px";
@@ -323,7 +320,6 @@ function openChangePasswordModal() {
   });
 }
 
-// ── Boot ──────────────────────────────────────────────
 async function boot() {
   renderApp();
 

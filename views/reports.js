@@ -1,11 +1,4 @@
-// ── Reports view (admin only) ──────────────────────────
-// Two read-only labor-cost reports, both driven by backend/routes/reports.php:
-//   - Department Labor Cost: total_hours × current_hourly_rate, grouped by dept
-//   - Employee Earnings:     total_hours × current_hourly_rate, grouped by employee
-//
-// These use the employee's *current* hourly rate, not the rate snapshotted at
-// payroll time — see reports.php header comment for why that can differ from
-// the Payroll page's numbers.
+// Reports view
 
 function renderReports(db, onDbChange) {
   const page = document.createElement("div");
@@ -17,7 +10,7 @@ function renderReports(db, onDbChange) {
   let filterDept  = "";
   let filterYear  = now.getFullYear();
   let filterMonth = "";
-  let activeTab   = "department"; // "department" | "employee"
+  let activeTab   = "department";
 
   let deptRows  = [];
   let empRows   = [];
@@ -27,7 +20,7 @@ function renderReports(db, onDbChange) {
   const monthNames = ["January","February","March","April","May","June",
                       "July","August","September","October","November","December"];
 
-  // ── Filter bar ────────────────────────────────────────
+  // Filter bar
   const filterCard = document.createElement("div");
   filterCard.className = "card";
   filterCard.style.padding = "14px 18px";
@@ -66,7 +59,7 @@ function renderReports(db, onDbChange) {
   filterCard.appendChild(filterRow);
   page.appendChild(filterCard);
 
-  // ── Tabs ──────────────────────────────────────────────
+  // Tabs
   const tabRow = document.createElement("div");
   tabRow.style.cssText = "display:flex;gap:8px;margin:14px 0 10px;";
 
@@ -89,7 +82,7 @@ function renderReports(db, onDbChange) {
   tabRow.appendChild(empTabBtn);
   page.appendChild(tabRow);
 
-  // ── Table card ────────────────────────────────────────
+  // Table card
   const tableCard = document.createElement("div");
   tableCard.className = "card";
   page.appendChild(tableCard);

@@ -1,6 +1,4 @@
-// ── Leave Records view ────────────────────────────────
-// Admin: sees all, can approve/reject/delete
-// Employee: sees own, can file new, edit/cancel pending
+// Leave Records view
 
 function renderLeaveRecords(db, account, onDbChange) {
   const page = document.createElement("div");
@@ -67,7 +65,7 @@ function renderLeaveRecords(db, account, onDbChange) {
       }));
     }
 
-    // ── Filters card ─────────────────────────────────
+    // Filters card
     const card = document.createElement("div");
     card.className = "card";
 
@@ -104,7 +102,6 @@ function renderLeaveRecords(db, account, onDbChange) {
     const old = card.querySelector(".table-wrap, .table-empty-wrap");
     if (old) old.remove();
 
-    // Backend filtering — search and status sent as query params
     const leaveParams = new URLSearchParams();
     if (searchVal)    leaveParams.set('search', searchVal);
     if (filterStatus) leaveParams.set('status', filterStatus);
@@ -126,7 +123,7 @@ function renderLeaveRecords(db, account, onDbChange) {
         viewBtn.addEventListener("click", () => openLeaveDetailsModal(l));
         actions.appendChild(viewBtn);
 
-        // Approve/Reject — backend blocks a supervisor approving their own request
+        // Approve/Rejects
         const isOwnAsSupervisor = account.access_level === "supervisor" && l.employee_id === account.employee_id;
         if (l.leave_status === "Pending" && !isOwnAsSupervisor) {
           const approveBtn = document.createElement("button");
@@ -154,7 +151,7 @@ function renderLeaveRecords(db, account, onDbChange) {
         }
 
       } else {
-        // Employee: edit/cancel only if pending
+        // Employee only possible edit/cancel only if pending
         if (l.leave_status === "Pending") {
           const editBtn = document.createElement("button");
           editBtn.className = "btn btn-ghost btn-sm";
@@ -198,7 +195,7 @@ function renderLeaveRecords(db, account, onDbChange) {
     card.appendChild(buildTable(headers, rows, "No leave records found."));
   }
 
-  // ── Admin: update status ─────────────────────────────
+  // Admin - update status
   async function updateStatus(leave, newStatus) {
     try {
       await apiRequest("/leave_records.php", {
@@ -213,7 +210,7 @@ function renderLeaveRecords(db, account, onDbChange) {
     }
   }
 
-  // ── Admin: delete confirmation modal ──────────────────
+  // Admin - delete confirmation modal
   function deleteLeave(leave) {
     const name = leave.full_name || "this employee";
     openConfirmModal({
@@ -245,7 +242,7 @@ function renderLeaveRecords(db, account, onDbChange) {
     });
   }
 
-  // ── Admin: full leave details modal ──────────────────
+  // Admin - full leave details modal
   function openLeaveDetailsModal(leave) {
     const emp = db.employees.find(e => e.employee_id === leave.employee_id) || null;
     const name = leave.full_name || employeeName(emp);
@@ -360,7 +357,7 @@ function renderLeaveRecords(db, account, onDbChange) {
     return diff > 0 ? diff : 1;
   }
 
-  // ── File / edit leave modal ──────────────────────────
+  // File / edit leave modal
   function openLeaveModal(existing) {
     const isEdit = !!existing;
     const data = isEdit ? { ...existing } : {

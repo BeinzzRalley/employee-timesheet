@@ -1,4 +1,4 @@
-// Time logs views — clock in/out, history table, live clocked-in list
+// Time logs views
 
 function renderTimeLogs(db, account, onDbChange) {
   return renderClockInOut(db, account, onDbChange);
@@ -40,16 +40,13 @@ function renderClockInOut(db, account, onDbChange) {
     return page;
   }
 
-  // Local date, matches server timezone
+  // Local date
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
-  // Loose match — API may return string or number ids
   let openLog = db.timeLogs.find(
-    // eslint-disable-next-line eqeqeq
     l => l.employee_id == empId && (l.work_date === today || l.clock_in.startsWith(today)) && !l.clock_out
   ) || null;
 
-  // Two column layout
   const wrap = document.createElement("div");
   wrap.style.display = "grid";
   wrap.style.gridTemplateColumns = "1fr 340px";
@@ -87,8 +84,6 @@ function renderClockInOut(db, account, onDbChange) {
   statusArea.style.cssText = "margin-bottom:24px;min-height:56px";
   clockCard.appendChild(statusArea);
 
-  // Shift selector removed — schedule comes from employee profile
-
   // Action button
   const actionBtn = document.createElement("button");
   actionBtn.style.cssText = "width:100%;padding:16px;font-size:1rem;font-weight:700;border-radius:12px;border:none;cursor:pointer;transition:all 0.15s;letter-spacing:0.02em";
@@ -120,7 +115,6 @@ function renderClockInOut(db, account, onDbChange) {
         actionBtn.textContent = "Clocking in…";
         try {
           const result  = await clockInRequest();
-          // Keep id type consistent for lookup after refresh
           const normResult = { ...result, employee_id: empId };
           const updated = [normResult, ...db.timeLogs];
           db = { ...db, timeLogs: updated };
@@ -210,7 +204,6 @@ function renderClockInOut(db, account, onDbChange) {
 
   function refreshTodayLogs() {
     todayLogsEl.innerHTML = "";
-    // eslint-disable-next-line eqeqeq
     const todayLogs = db.timeLogs.filter(
       l => l.employee_id == empId && (l.work_date === today || l.clock_in.startsWith(today))
     );
@@ -283,7 +276,6 @@ function renderClockedInNowView(db, account, onDbChange) {
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
 
-  // Today only, still open
   const activeNow = db.timeLogs.filter(l =>
     (l.work_date === today || l.clock_in.startsWith(today)) && !l.clock_out
   );
@@ -419,7 +411,7 @@ function renderClockedInNowView(db, account, onDbChange) {
   return page;
 }
 
-// Attendance history — personal or company-wide
+// Attendance history
 function renderLogsView(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";

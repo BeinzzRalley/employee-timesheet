@@ -1,4 +1,4 @@
-// ── Time Log Claims — OT / holiday claims against time logs ──
+// Time Log Claims
 
 function isClaimApprover(account) {
   const l = accessLevel(account);

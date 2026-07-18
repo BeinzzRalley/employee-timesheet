@@ -1,10 +1,10 @@
-// ── Login view ───────────────────────────────────────
+// Login view
 
 function renderLogin(onLogin) {
   const page = document.createElement("div");
   page.className = "login-page";
 
-  // ── Left panel ──────────────────────────────────────
+  // Left panel
   const features = [
     { title: "Clock In & Out",    desc: "Real-time attendance tracking with shift categories." },
     { title: "Leave Management",  desc: "File and approve leave requests in one place." },
@@ -41,19 +41,14 @@ function renderLogin(onLogin) {
       </div>
     </div>
   `;
-  // NOTE: the "X employees / Y departments / Z shift types" stat strip that
-  // used to live here read directly from the local seed DB. If you want it
-  // back, fetch lightweight counts from your backend (e.g. a /stats/public
-  // endpoint) rather than pulling from a full data load pre-login.
 
-  // ── Right panel ──────────────────────────────────────
+  // Right panel
   const rightPanel = document.createElement("div");
   rightPanel.className = "login-panel-right";
 
   const formWrap = document.createElement("div");
   formWrap.className = "login-form-wrap";
 
-  // Mobile logo
   formWrap.innerHTML = `
     <div class="login-mobile-logo">
       <div class="login-mobile-logo-icon">${icons.timer}</div>
@@ -63,7 +58,6 @@ function renderLogin(onLogin) {
     <p>Enter your credentials to access your account.</p>
   `;
 
-  // Form
   const form = document.createElement("form");
   form.className = "login-form";
 
@@ -103,8 +97,6 @@ function renderLogin(onLogin) {
     submitBtn.textContent = "Signing in…";
 
     try {
-      // Verification happens server-side in auth.php (password_verify against
-      // the stored bcrypt hash) — credentials are never checked here.
       const acc = await loginRequest(username, password);
       if (acc) {
         onLogin(acc);

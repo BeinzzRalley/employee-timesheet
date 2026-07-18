@@ -1,8 +1,5 @@
-// ── Attendance Incident Reports — buddy punching, no-show, etc. ──
-// Employee files a report on a time log -> Supervisor/HR/Admin investigates
-// -> Confirmed / Dismissed. Reports are immutable after submission except by
-// the validator. Backed by backend/routes/incident_reports.php — distinct
-// from the "Reports" nav item, which is admin labor-cost analytics.
+// Incident Reports
+// Employee files a report on a time log then Supervisor/HR/Admin investigates
 
 const REPORT_REASONS = [
   "Buddy Punching",

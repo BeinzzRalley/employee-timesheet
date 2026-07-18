@@ -1,4 +1,4 @@
-// ── Employees view ────────────────────────────────────
+// Employees view
 
 function employmentStatusId(db, name, fallback = null) {
   const row = (db.employmentStatuses || []).find(s => s.status_name === name);

@@ -1,4 +1,4 @@
-// ── Modal ────────────────────────────────────────────
+// Modal
 
 function openModal({ title, body, wide = false, onClose }) {
   const overlay = document.createElement("div");
@@ -33,7 +33,7 @@ function openModal({ title, body, wide = false, onClose }) {
   return { overlay, modal, close };
 }
 
-// ── Table builder ────────────────────────────────────
+// Table builder
 
 function buildTable(headers, rows, emptyMsg = "No records found") {
   const wrap = document.createElement("div");
@@ -74,7 +74,7 @@ function buildTable(headers, rows, emptyMsg = "No records found") {
   return wrap;
 }
 
-// ── Scope banner (role / department indicator) ───────
+// Scope banner
 
 function buildScopeBanner({ variant, title, detail }) {
   const icons = { dept: "🏢", company: "🌐", personal: "👤" };
@@ -90,7 +90,7 @@ function buildScopeBanner({ variant, title, detail }) {
   return banner;
 }
 
-// ── Sidebar ──────────────────────────────────────────
+// Sidebar
 
 function buildSidebar({ navSections, navItems, activeId, onNav, account, emp, onLogout }) {
   const aside = document.createElement("aside");
@@ -151,7 +151,7 @@ function buildSidebar({ navSections, navItems, activeId, onNav, account, emp, on
   return aside;
 }
 
-// ── Page header ──────────────────────────────────────
+// Page header
 
 function pageHeader(title, sub, actionEl) {
   const div = document.createElement("div");
@@ -166,7 +166,7 @@ function pageHeader(title, sub, actionEl) {
   return div;
 }
 
-// ── Field builder ────────────────────────────────────
+// Field builder
 
 function buildField(label, inputEl) {
   const div = document.createElement("div");
@@ -200,7 +200,7 @@ function makeSelect(options, value) {
   return sel;
 }
 
-// ── Shared UI helpers (used across views) ────────────
+// Shared UI helpers
 
 function buildEditDeleteActions({ onEdit, onDelete }) {
   const actions = document.createElement("div");

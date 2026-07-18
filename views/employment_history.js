@@ -196,7 +196,6 @@ function renderEmploymentHistory(db, account, onDbChange) {
     const body = document.createElement("div");
     body.style.cssText = "display:flex;flex-direction:column;gap:14px";
 
-    // Build fields
     let fEmp;
     if (isEdit) {
       fEmp = document.createElement("span");

@@ -68,12 +68,12 @@ function renderAuditLog(db, onDbChange) {
   let loading = false;
   let loadErr = null;
 
-  // ── Tabs ──────────────────────────────────────────────
+  // Tabs
   const tabsRow = document.createElement("div");
   tabsRow.className = "audit-tabs";
   page.appendChild(tabsRow);
 
-  // ── Filter bar ────────────────────────────────────────
+  // Filter bar
   const filterCard = document.createElement("div");
   filterCard.className = "card";
   filterCard.style.padding = "14px 18px";
@@ -83,7 +83,7 @@ function renderAuditLog(db, onDbChange) {
   filterRow.style.cssText = "display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;";
   filterCard.appendChild(filterRow);
 
-  let subActionSel = null; // rebuilt per-tab
+  let subActionSel = null; 
 
   const fromInp = makeInput("date", filterFrom);
   fromInp.addEventListener("change", e => { filterFrom = e.target.value; offset = 0; load(); });
@@ -110,7 +110,7 @@ function renderAuditLog(db, onDbChange) {
   const dateFromField = buildField("From", fromInp);
   const dateToField    = buildField("To", toInp);
   const accField        = buildField("Performed By", accSel);
-  const subActionSlot  = document.createElement("div"); // sub-action select goes here, per tab
+  const subActionSlot  = document.createElement("div");
 
   filterRow.appendChild(dateFromField);
   filterRow.appendChild(dateToField);
@@ -128,7 +128,7 @@ function renderAuditLog(db, onDbChange) {
     subActionSlot.appendChild(buildField("Action", subActionSel));
   }
 
-  // ── Table card ────────────────────────────────────────
+  // Table card
   const tableCard = document.createElement("div");
   tableCard.className = "card";
   page.appendChild(tableCard);
@@ -152,7 +152,6 @@ function renderAuditLog(db, onDbChange) {
     });
   }
 
-  // ── Helpers to resolve human-readable labels ──────────
   function accountLabel(entry) {
     if (entry.username_snapshot) return entry.username_snapshot;
     const acc = db.accounts.find(a => a.account_id === entry.account_id);
@@ -165,7 +164,6 @@ function renderAuditLog(db, onDbChange) {
       let uname = acc && acc.username;
       const d = entry.details;
       if (d && d.username) {
-        // account_update stores { from, to }; create/delete store a plain string
         uname = (d.username && typeof d.username === "object" && "to" in d.username)
           ? d.username.to
           : d.username;
@@ -204,7 +202,6 @@ function renderAuditLog(db, onDbChange) {
     return String(val);
   }
 
-  // Builds the expandable details panel content for a single entry
   function buildDetailPanel(entry) {
     const panel = document.createElement("div");
     panel.className = "audit-detail-panel";
@@ -275,7 +272,6 @@ function renderAuditLog(db, onDbChange) {
       const targetCell = `<span class="text-sm">${targetLabel(entry)}</span>`;
       const whenCell    = `<span class="mono text-xs text-gray">${fmtDT(entry.created_at)}</span>`;
 
-      // Details toggle cell
       const detailsCell = document.createElement("div");
       const hasDetails = entry.details && Object.keys(entry.details).length > 0;
       if (hasDetails) {
@@ -308,7 +304,7 @@ function renderAuditLog(db, onDbChange) {
         "No audit entries found for the selected filters.")
     );
 
-    // ── Pagination ──────────────────────────────────────
+    // Page numbers
     if (total > 0) {
       const start = offset + 1;
       const end   = Math.min(offset + limit, total);

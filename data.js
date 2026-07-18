@@ -42,7 +42,6 @@ async function fetchAllData() {
       apiRequest("/employees.php"),
       apiRequest("/departments.php"),
       apiRequest("/roles.php"),
-      apiRequest("/shift_categories.php"),
       safe(apiRequest("/attendance_status.php")),
       safe(apiRequest("/leave_records.php")),
       safe(apiRequest("/accounts.php")), // admin only
@@ -62,7 +61,6 @@ async function fetchAllData() {
     employees,
     departments,
     roles,
-    shiftCategories,
     attendanceStatuses,
     timeLogs,
     leaveRecords,
@@ -227,7 +225,7 @@ async function deleteLeaveType(body) {
 function emptyDb() {
   return {
     departments: [], roles: [], employees: [],
-    shiftCategories: [], attendanceStatuses: [],
+    attendanceStatuses: [],
     timeLogs: [], leaveRecords: [], accounts: [],
     dashboardStats: null,
     leaveTypes: [],

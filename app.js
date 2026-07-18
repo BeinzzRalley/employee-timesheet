@@ -39,13 +39,11 @@ const SYSTEM_ADMIN_NAV = [
       { id: "leave_records",  label: "Leave Records",  icon: icons.fileText },
       { id: "clocked_in_now", label: "Clocked In Now", icon: icons.live     },
       { id: "my_logs",        label: "Time Logs",      icon: icons.calendar },
-      { id: "payroll",        label: "Payroll",        icon: icons.pay      },
     ],
   },
   {
     label: "Configuration",
     items: [
-      { id: "shift_categories",    label: "Shift Categories",    icon: icons.shift     },
       { id: "employment_status",   label: "Employment Status",   icon: icons.users     },
       { id: "work_schedules",      label: "Work Schedules",      icon: icons.shift     },
       { id: "employment_types",    label: "Employment Types",    icon: icons.briefcase },
@@ -78,7 +76,6 @@ const SUPERVISOR_NAV = [
   { id: "leave_records",  label: "Leave Records",  icon: icons.fileText  },
   { id: "time_logs",      label: "Clock In / Out", icon: icons.clock     },
   { id: "my_logs",        label: "My Time Logs",   icon: icons.calendar  },
-  { id: "payroll",        label: "My Pay",         icon: icons.pay       },
 ];
 
 const EMPLOYEE_NAV = [
@@ -86,7 +83,6 @@ const EMPLOYEE_NAV = [
   { id: "time_logs",     label: "Clock In / Out", icon: icons.clock     },
   { id: "my_logs",       label: "My Time Logs",   icon: icons.calendar  },
   { id: "leave_records", label: "My Leave",       icon: icons.fileText  },
-  { id: "payroll",       label: "My Pay",         icon: icons.pay       },
 ];
 
 function flattenNavSections(sections) {
@@ -145,10 +141,6 @@ function renderView(viewId, db, account, onDbChange) {
       return renderTimeLogs(db, account, onDbChange);
     case "my_logs":
       return renderMyLogs(db, account, onDbChange);
-    case "payroll":
-      return renderPayroll(db, account, onDbChange);
-    case "shift_categories":
-      return adminConfig ? renderShiftCategories(db, onDbChange) : renderDashboard(db, account);
     case "employment_status":
       return adminConfig ? renderEmploymentStatus(db, onDbChange) : renderDashboard(db, account);
     case "work_schedules":

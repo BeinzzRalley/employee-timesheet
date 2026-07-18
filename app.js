@@ -51,6 +51,8 @@ const SYSTEM_ADMIN_NAV = [
       { id: "employment_types",    label: "Employment Types",    icon: icons.briefcase },
       { id: "holidays",            label: "Holidays",            icon: icons.fileText  },
       { id: "overtime_categories", label: "Overtime Categories", icon: icons.shift     },
+      { id: "pay_differentials",   label: "Pay Differentials",   icon: icons.pay       },
+      { id: "validation_status",   label: "Validation Status",   icon: icons.check     },
     ],
   },
   {
@@ -157,6 +159,10 @@ function renderView(viewId, db, account, onDbChange) {
       return adminConfig ? renderHolidays(db, onDbChange) : renderDashboard(db, account);
     case "overtime_categories":
       return adminConfig ? renderOvertimeCategories(db, onDbChange) : renderDashboard(db, account);
+    case "pay_differentials":
+      return adminConfig ? renderPayDifferentials(db, onDbChange) : renderDashboard(db, account);
+    case "validation_status":
+      return adminConfig ? renderValidationStatus(db, onDbChange) : renderDashboard(db, account);
     case "reports":
       return adminConfig ? renderReports(db, onDbChange) : renderDashboard(db, account);
     case "audit_log":

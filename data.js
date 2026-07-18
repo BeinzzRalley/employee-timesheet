@@ -37,25 +37,43 @@ async function logoutRequest() {
 async function fetchAllData() {
   const safe = (p) => p.catch(() => []);
 
-  const [employees, departments, roles, shiftCategories, attendanceStatuses, leaveRecords, accounts, timeLogs, dashboardStats, leaveTypes, employmentStatuses, workSchedules, employmentTypes, holidays, overtimeCategories, payDifferentials, validationStatuses] =
-    await Promise.all([
-      apiRequest("/employees.php"),
-      apiRequest("/departments.php"),
-      apiRequest("/roles.php"),
-      safe(apiRequest("/attendance_status.php")),
-      safe(apiRequest("/leave_records.php")),
-      safe(apiRequest("/accounts.php")), // admin only
-      safe(apiRequest("/time_logs.php")),
-      safe(apiRequest("/dashboard.php")),
-      safe(apiRequest("/leave_types.php")),
-      safe(apiRequest("/employment_status.php")),
-      safe(apiRequest("/work_schedules.php")),
-      safe(apiRequest("/employment_types.php")),
-      safe(apiRequest("/holidays.php")),
-      safe(apiRequest("/overtime_categories.php")),
-      safe(apiRequest("/pay_differentials.php")),
-      safe(apiRequest("/validation_status.php")),
-    ]);
+  const [
+    employees,
+    departments,
+    roles,
+    attendanceStatuses,
+    leaveRecords,
+    accounts,
+    timeLogs,
+    dashboardStats,
+    leaveTypes,
+    employmentStatuses,
+    workSchedules,
+    employmentTypes,
+    holidays,
+    overtimeCategories,
+    payDifferentials,
+    validationStatuses,
+    timeLogClaims,
+  ] = await Promise.all([
+    apiRequest("/employees.php"),
+    apiRequest("/departments.php"),
+    apiRequest("/roles.php"),
+    safe(apiRequest("/attendance_status.php")),
+    safe(apiRequest("/leave_records.php")),
+    safe(apiRequest("/accounts.php")),
+    safe(apiRequest("/time_logs.php")),
+    safe(apiRequest("/dashboard.php")),
+    safe(apiRequest("/leave_types.php")),
+    safe(apiRequest("/employment_status.php")),
+    safe(apiRequest("/work_schedules.php")),
+    safe(apiRequest("/employment_types.php")),
+    safe(apiRequest("/holidays.php")),
+    safe(apiRequest("/overtime_categories.php")),
+    safe(apiRequest("/pay_differentials.php")),
+    safe(apiRequest("/validation_status.php")),
+    safe(apiRequest("/time_log_claims.php")),
+  ]);
 
   return {
     employees,
@@ -74,6 +92,7 @@ async function fetchAllData() {
     overtimeCategories,
     payDifferentials,
     validationStatuses,
+    timeLogClaims,
   };
 }
 
@@ -103,11 +122,8 @@ async function deleteAccountRequest(accountId) {
 }
 
 // ── Time Logs ─────────────────────────────────────────
-async function clockInRequest(shiftCategoryId) {
-  return apiRequest("/time_logs.php?action=clock_in", {
-    method: "POST",
-    body: JSON.stringify({ shift_category_id: shiftCategoryId }),
-  });
+async function clockInRequest() {
+  return apiRequest("/time_logs.php?action=clock_in", { method: "POST" });
 }
 async function clockOutRequest() {
   return apiRequest("/time_logs.php?action=clock_out", { method: "POST" });
@@ -119,49 +135,24 @@ async function updateTimeLogRequest(logId, data) {
   });
 }
 
+// ── Time Log Claims ───────────────────────────────────
+async function fetchTimeLogClaims(params = "") {
+  const qs = params ? (params.startsWith("?") ? params : `?${params}`) : "";
+  return apiRequest(`/time_log_claims.php${qs}`);
+}
+async function createTimeLogClaimRequest(body) {
+  return apiRequest("/time_log_claims.php", { method: "POST", body: JSON.stringify(body) });
+}
+async function updateTimeLogClaimRequest(body) {
+  return apiRequest("/time_log_claims.php", { method: "PUT", body: JSON.stringify(body) });
+}
+async function deleteTimeLogClaimRequest(claimId) {
+  return apiRequest(`/time_log_claims.php?id=${claimId}`, { method: "DELETE" });
+}
+
 // ── Dashboard ─────────────────────────────────────────
 async function fetchDashboardStats() {
   return apiRequest("/dashboard.php");
-}
-
-// ── Payroll (admin unless noted) ─────────────────────
-async function fetchPayrollPeriods(departmentId = null, extraParams = "") {
-  const qs = departmentId ? `&department_id=${departmentId}` : "";
-  const extra = extraParams ? `&${extraParams}` : "";
-  return apiRequest(`/payroll.php?action=periods${qs}${extra}`);
-}
-async function previewPayrollRequest(departmentId, year, month) {
-  return apiRequest(
-    `/payroll.php?action=preview&department_id=${departmentId}&year=${year}&month=${month}`
-  );
-}
-async function generatePayrollRequest(departmentId, year, month) {
-  return apiRequest("/payroll.php?action=generate", {
-    method: "POST",
-    body: JSON.stringify({ department_id: departmentId, year, month }),
-  });
-}
-async function fetchPayrollRecords(periodId) {
-  return apiRequest(`/payroll.php?action=records&period_id=${periodId}`);
-}
-async function updatePayrollRecordRequest(recordId, data) {
-  return apiRequest("/payroll.php?action=record", {
-    method: "PUT",
-    body: JSON.stringify({ ...data, record_id: recordId }),
-  });
-}
-async function approvePayrollPeriodRequest(periodId) {
-  return apiRequest(`/payroll.php?action=approve&period_id=${periodId}`, {
-    method: "POST",
-  });
-}
-async function unapprovePayrollPeriodRequest(periodId) {
-  return apiRequest(`/payroll.php?action=unapprove&period_id=${periodId}`, {
-    method: "POST",
-  });
-}
-async function fetchMyPayrollHistory() {
-  return apiRequest("/payroll.php?action=my_history");
 }
 
 // ── Audit Log (admin only, read-only) ─────────────────
@@ -179,32 +170,6 @@ function buildAuditLogQS(filters = {}) {
 }
 async function fetchAuditLog(filters = {}) {
   return apiRequest(`/audit_log.php${buildAuditLogQS(filters)}`);
-}
-
-// ── Reports (admin only) ──────────────────────────────
-function buildReportQS({ departmentId, year, month }) {
-  const params = [];
-  if (departmentId) params.push(`department_id=${departmentId}`);
-  if (year && month) {
-    const pad = (n) => String(n).padStart(2, "0");
-    const lastDay = new Date(year, month, 0).getDate();
-    params.push(`date_from=${year}-${pad(month)}-01`);
-    params.push(`date_to=${year}-${pad(month)}-${lastDay}`);
-  } else if (year) {
-    params.push(`date_from=${year}-01-01`);
-    params.push(`date_to=${year}-12-31`);
-  }
-  return params.length ? `&${params.join("&")}` : "";
-}
-
-async function fetchDepartmentLaborCostReport(filters = {}) {
-  const qs = buildReportQS(filters);
-  return apiRequest(`/reports.php?action=department_labor_cost${qs}`);
-}
-
-async function fetchEmployeeEarningsReport(filters = {}) {
-  const qs = buildReportQS(filters);
-  return apiRequest(`/reports.php?action=employee_earnings${qs}`);
 }
 
 // ── Leave Types ───────────────────────────────────────
@@ -236,5 +201,6 @@ function emptyDb() {
     overtimeCategories: [],
     payDifferentials: [],
     validationStatuses: [],
+    timeLogClaims: [],
   };
 }

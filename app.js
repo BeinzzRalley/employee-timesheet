@@ -37,6 +37,7 @@ const SYSTEM_ADMIN_NAV = [
     items: [
       { id: "employees",      label: "Employees",      icon: icons.users    },
       { id: "leave_records",  label: "Leave Records",  icon: icons.fileText },
+      { id: "time_log_claims", label: "OT Claims",     icon: icons.fileText },
       { id: "clocked_in_now", label: "Clocked In Now", icon: icons.live     },
       { id: "my_logs",        label: "Time Logs",      icon: icons.calendar },
     ],
@@ -74,6 +75,7 @@ const SUPERVISOR_NAV = [
   { id: "employees",      label: "My Department",  icon: icons.users     },
   { id: "clocked_in_now", label: "Clocked In Now", icon: icons.live      },
   { id: "leave_records",  label: "Leave Records",  icon: icons.fileText  },
+  { id: "time_log_claims", label: "OT Claims",    icon: icons.fileText  },
   { id: "time_logs",      label: "Clock In / Out", icon: icons.clock     },
   { id: "my_logs",        label: "My Time Logs",   icon: icons.calendar  },
 ];
@@ -82,6 +84,7 @@ const EMPLOYEE_NAV = [
   { id: "dashboard",     label: "Dashboard",      icon: icons.dashboard },
   { id: "time_logs",     label: "Clock In / Out", icon: icons.clock     },
   { id: "my_logs",       label: "My Time Logs",   icon: icons.calendar  },
+  { id: "time_log_claims", label: "OT Claims",    icon: icons.fileText  },
   { id: "leave_records", label: "My Leave",       icon: icons.fileText  },
 ];
 
@@ -133,6 +136,8 @@ function renderView(viewId, db, account, onDbChange) {
         : renderDashboard(db, account);
     case "leave_records":
       return renderLeaveRecords(db, account, onDbChange);
+    case "time_log_claims":
+      return renderTimeLogClaims(db, account, onDbChange);
     case "clocked_in_now":
       return canViewClockedInNow(account)
         ? renderClockedInNow(db, account, onDbChange)

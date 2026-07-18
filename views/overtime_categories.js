@@ -24,7 +24,7 @@ function renderOvertimeCategories(db, onDbChange) {
 
     page.appendChild(pageHeader(
       "Overtime Categories",
-      `${(db.overtimeCategories || []).length} categories`,
+      `${(db.overtimeCategories || []).length} categories — Labor Code Art. 87 classification`,
       addBtn
     ));
 
@@ -51,13 +51,12 @@ function renderOvertimeCategories(db, onDbChange) {
 
       return [
         `<span class="font-medium text-sm">${c.category_name}</span>`,
-        `<span class="mono text-xs" style="color:#6366f1;font-weight:600">${Number(c.rate_multiplier).toFixed(2)}×</span>`,
         actions,
       ];
     });
 
     card.appendChild(buildTable(
-      ["Category Name", "Rate Multiplier", ""],
+      ["Category Name", ""],
       rows,
       "No overtime categories defined."
     ));
@@ -65,69 +64,29 @@ function renderOvertimeCategories(db, onDbChange) {
   }
 
   function deleteCategory(c) {
-    const body = document.createElement("div");
-    body.style.display = "flex";
-    body.style.flexDirection = "column";
-    body.style.gap = "18px";
-
-    const message = document.createElement("p");
-    message.className = "text-sm";
-    message.textContent = `Are you sure you want to delete "${c.category_name}"? This will fail if it is assigned to any time logs.`;
-    body.appendChild(message);
-
-    const footer = document.createElement("div");
-    footer.className = "modal-footer";
-
-    const keepBtn = document.createElement("button");
-    keepBtn.className = "btn btn-outline";
-    keepBtn.textContent = "Keep Category";
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "btn btn-danger";
-    deleteBtn.textContent = "Delete Category";
-
-    footer.appendChild(keepBtn);
-    footer.appendChild(deleteBtn);
-    body.appendChild(footer);
-
-    const { close } = openModal({ title: "Delete Overtime Category", body });
-
-    keepBtn.addEventListener("click", close);
-
-    deleteBtn.addEventListener("click", async () => {
-      deleteBtn.disabled = true;
-      try {
+    openConfirmModal({
+      title: "Delete Overtime Category",
+      message: `Delete "${c.category_name}"? This will fail if assigned to any time log claims.`,
+      keepLabel: "Keep Category",
+      confirmLabel: "Delete Category",
+      onConfirm: async () => {
         await apiRequest(`/overtime_categories.php?id=${c.overtime_category_id}`, { method: "DELETE" });
         await reloadCategories();
-        close();
         showToast("Overtime category deleted.", "success");
         refresh();
-      } catch (err) {
-        showToast(err.message || "Could not delete category.", "error");
-        deleteBtn.disabled = false;
-      }
+      },
     });
   }
 
   function openCategoryModal(existing) {
     const isEdit = !!existing;
-    const data = isEdit ? { ...existing } : { category_name: "", rate_multiplier: 1.25 };
+    const data = isEdit ? { ...existing } : { category_name: "" };
 
     const body = document.createElement("div");
     body.style.cssText = "display:flex;flex-direction:column;gap:14px";
 
-    const fName = makeInput("text", data.category_name, "e.g. Regular OT");
-    const fMult = makeInput("number", data.rate_multiplier);
-    fMult.step = "0.01";
-    fMult.min  = "0.01";
-
-    const hint = document.createElement("div");
-    hint.style.cssText = "font-size:0.78rem;color:var(--text-muted)";
-    hint.textContent = "Philippine standard rates: Regular OT = 1.25×, Rest Day OT = 1.30×, Holiday OT = 2.60×";
-
+    const fName = makeInput("text", data.category_name, "e.g. Regular OT, Rest Day OT, Holiday OT");
     body.appendChild(buildField("Category Name", fName));
-    body.appendChild(buildField("Rate Multiplier", fMult));
-    body.appendChild(hint);
 
     const errEl = document.createElement("div");
     errEl.className = "alert-error";
@@ -155,20 +114,13 @@ function renderOvertimeCategories(db, onDbChange) {
 
     saveBtn.addEventListener("click", async () => {
       const name = fName.value.trim();
-      const mult = parseFloat(fMult.value);
-
       if (!name) {
         errEl.textContent = "Category name is required.";
         errEl.style.display = "block";
         return;
       }
-      if (!mult || mult <= 0) {
-        errEl.textContent = "Rate multiplier must be greater than 0.";
-        errEl.style.display = "block";
-        return;
-      }
 
-      const payload = { category_name: name, rate_multiplier: mult };
+      const payload = { category_name: name };
       if (isEdit) payload.overtime_category_id = data.overtime_category_id;
 
       errEl.style.display = "none";

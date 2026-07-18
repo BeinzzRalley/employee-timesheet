@@ -248,7 +248,7 @@ function renderLeaveRecords(db, account, onDbChange) {
   // ── Admin: full leave details modal ──────────────────
   function openLeaveDetailsModal(leave) {
     const emp = db.employees.find(e => e.employee_id === leave.employee_id) || null;
-    const name = leave.full_name || (emp ? emp.full_name : "Unknown Employee");
+    const name = leave.full_name || employeeName(emp);
 
     const body = document.createElement("div");
 
@@ -364,7 +364,7 @@ function renderLeaveRecords(db, account, onDbChange) {
   function openLeaveModal(existing) {
     const isEdit = !!existing;
     const data = isEdit ? { ...existing } : {
-      leave_type: "",
+      leave_type_id: db.leaveTypes[0] ? db.leaveTypes[0].leave_type_id : "",
       date_from: "",
       date_to: "",
       remarks: "",
@@ -375,19 +375,15 @@ function renderLeaveRecords(db, account, onDbChange) {
     body.style.flexDirection = "column";
     body.style.gap = "14px";
 
-    // Leave types from database instead of hardcoded
     const leaveTypeOptions = (db.leaveTypes && db.leaveTypes.length)
-      ? db.leaveTypes.map(t => [t.leave_name, t.leave_name])
-      : [
-          ["Sick Leave",      "Sick Leave"],
-          ["Vacation Leave",  "Vacation Leave"],
-          ["Emergency Leave", "Emergency Leave"],
-          ["Maternity Leave", "Maternity Leave"],
-          ["Paternity Leave", "Paternity Leave"],
-          ["Unpaid Leave",    "Unpaid Leave"],
-        ];
+      ? db.leaveTypes.map(t => [t.leave_type_id, t.leave_name])
+      : [];
 
-    const fType    = makeSelect(leaveTypeOptions, data.leave_type || (leaveTypeOptions[0] && leaveTypeOptions[0][0]) || "");
+    const resolvedTypeId = data.leave_type_id
+      || (db.leaveTypes.find(t => t.leave_name === data.leave_type) || {}).leave_type_id
+      || "";
+
+    const fType    = makeSelect(leaveTypeOptions, resolvedTypeId);
     const fFrom    = makeInput("date", data.date_from);
     const fTo      = makeInput("date", data.date_to);
     const fRemarks = makeInput("text", data.remarks, "Optional remarks…");
@@ -438,7 +434,7 @@ function renderLeaveRecords(db, account, onDbChange) {
       if (dateTo < dateFrom) { errEl.textContent = "End date must be on or after start date."; errEl.style.display = "block"; return; }
 
       const payload = {
-        leave_type: fType.value,
+        leave_type_id: Number(fType.value),
         date_from:  dateFrom,
         date_to:    dateTo,
         remarks:    fRemarks.value.trim() || null,

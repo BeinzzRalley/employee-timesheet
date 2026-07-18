@@ -1,17 +1,9 @@
 // ── Employees view ────────────────────────────────────
-// TSK-26: Admin views all employees in a table with name, department, role, status
-// TSK-27: Add Employee Form
-// TSK-28: Edit Employee Form
-// TSK-34: Deactivate/Reactivate Employee
-// TSK-42: Filter Employees by Department
-//
-// Backend permissions (employees.php):
-//   GET    — system_admin & payroll_admin see everyone; supervisor sees only
-//            their own department (server ignores search/department_id
-//            filters for supervisors and always returns the dept-scoped set)
-//   POST   — payroll_admin or system_admin only (requirePayrollAdmin)
-//   PUT    — payroll_admin or system_admin only (requirePayrollAdmin)
-//   DELETE — system_admin only (not exposed in this UI at all)
+
+function employmentStatusId(db, name, fallback = null) {
+  const row = (db.employmentStatuses || []).find(s => s.status_name === name);
+  return row ? row.employment_status_id : fallback;
+}
 
 function renderEmployees(db, account, onDbChange) {
   const page = document.createElement("div");
@@ -68,11 +60,9 @@ function renderEmployees(db, account, onDbChange) {
       note.textContent = "Read-only — you cannot add, edit, or deactivate employees.";
       card.appendChild(note);
     } else {
-      // ── Toolbar: search + department filter ──────────
       const toolbar = document.createElement("div");
       toolbar.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:4px";
 
-      // Search
       const searchBar = document.createElement("div");
       searchBar.className = "search-bar";
       searchBar.style.flex = "1";
@@ -88,7 +78,6 @@ function renderEmployees(db, account, onDbChange) {
       searchBar.appendChild(searchInput);
       toolbar.appendChild(searchBar);
 
-      // Department filter — TSK-42
       const deptOpts = [["", "All Departments"], ...db.departments.map(d => [d.department_id, d.department_name])];
       const deptFilter = makeSelect(deptOpts, filterDeptId);
       deptFilter.style.minWidth = "160px";
@@ -109,16 +98,13 @@ function renderEmployees(db, account, onDbChange) {
     const old = card.querySelector(".table-wrap, .table-empty-wrap");
     if (old) old.remove();
 
-    // Ask backend for filtered results. Supervisors are scoped server-side
-    // regardless of what we send, so we simply don't send filters for them.
     const params = new URLSearchParams();
     if (!supervisorView) {
-      if (searchVal)    params.set('search', searchVal);
-      if (filterDeptId) params.set('department_id', filterDeptId);
+      if (searchVal)    params.set("search", searchVal);
+      if (filterDeptId) params.set("department_id", filterDeptId);
     }
     const filtered = await apiRequest(`/employees.php?${params.toString()}`);
 
-    // Active count badge strip
     const oldStrip = card.querySelector(".emp-summary-strip");
     if (oldStrip) oldStrip.remove();
 
@@ -140,18 +126,19 @@ function renderEmployees(db, account, onDbChange) {
       ${inactiveCount > 0 ? `
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px 16px;display:flex;align-items:center;gap:8px">
         <span style="font-size:1.1rem;font-weight:800;color:#d97706">${inactiveCount}</span>
-        <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500">Inactive / On Leave</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500">Not Active</span>
       </div>` : ""}
     `;
     card.insertBefore(strip, card.querySelector(".table-wrap") || null);
 
     const rows = filtered.map(e => {
+      const name = employeeName(e);
       const empCell = document.createElement("div");
       empCell.className = "emp-cell";
       empCell.innerHTML = `
-        ${avatarHTML(e.full_name, "sm")}
+        ${avatarHTML(name, "sm")}
         <div class="emp-cell-info">
-          <p>${e.full_name}</p>
+          <p>${name}</p>
           <p>${e.email || "—"}</p>
         </div>
       `;
@@ -183,15 +170,16 @@ function renderEmployees(db, account, onDbChange) {
         empCell,
         `<span class="text-xs">${e.department_name || "—"}</span>`,
         `<span class="text-xs text-gray">${e.role_name || "—"}</span>`,
-        `<span class="mono text-xs">₱${Number(e.current_hourly_rate).toFixed(2)}/hr</span>`,
-        badge(e.employment_status),
+        `<span class="text-xs">${e.employment_type_name || "—"}</span>`,
+        `<span class="text-xs text-gray">${e.schedule_name || "—"}</span>`,
+        badge(e.employment_status || "—"),
         `<span class="mono text-xs text-gray">${fmtDate(e.hire_date)}</span>`,
         actionsCell,
       ];
     });
 
     const table = buildTable(
-      ["Employee", "Department", "Role", "Hourly Rate", "Status", "Hired", ""],
+      ["Employee", "Department", "Role", "Type", "Schedule", "Status", "Hired", ""],
       rows,
       "No employees match the current filters."
     );
@@ -203,42 +191,51 @@ function renderEmployees(db, account, onDbChange) {
     if (!existing && !canCreate) return;
 
     const isEdit = !!existing;
+    const defaultStatusId = employmentStatusId(db, "Active", 1);
     const blankEmp = {
       department_id: db.departments[0] ? db.departments[0].department_id : null,
       role_id: db.roles[0] ? db.roles[0].role_id : null,
-      full_name: "", email: "", contact_no: "",
-      hire_date: "", current_hourly_rate: 0, employment_status: "Active"
+      first_name: "", last_name: "", email: "", contact_no: "",
+      hire_date: "",
+      employment_status_id: defaultStatusId,
+      employment_type_id: db.employmentTypes[0] ? db.employmentTypes[0].employment_type_id : null,
+      schedule_id: db.workSchedules[0] ? db.workSchedules[0].schedule_id : null,
     };
     const data = isEdit ? { ...existing } : { ...blankEmp };
 
     const body = document.createElement("div");
-
     const formGrid = document.createElement("div");
     formGrid.className = "grid-2";
     formGrid.style.gap = "14px";
 
-    const fName    = makeInput("text",   data.full_name,          "Full name");
-    const fEmail   = makeInput("email",  data.email,              "email@corp.ph");
-    const fContact = makeInput("text",   data.contact_no,         "+63 9XX XXX XXXX");
-    const fHire    = makeInput("date",   data.hire_date);
-    const fRate    = makeInput("number", data.current_hourly_rate);
+    const fFirst   = makeInput("text", data.first_name, "First name");
+    const fLast    = makeInput("text", data.last_name, "Last name");
+    const fEmail   = makeInput("email", data.email, "email@corp.ph");
+    const fContact = makeInput("text", data.contact_no, "+63 9XX XXX XXXX");
+    const fHire    = makeInput("date", data.hire_date);
 
-    const deptOpts = db.departments.map(d => [d.department_id, d.department_name]);
-    const roleOpts = db.roles.map(r => [r.role_id, r.role_name]);
-    const statOpts = [["Active","Active"],["Inactive","Inactive"],["On Leave","On Leave"]];
+    const deptOpts   = db.departments.map(d => [d.department_id, d.department_name]);
+    const roleOpts   = db.roles.map(r => [r.role_id, r.role_name]);
+    const statusOpts = (db.employmentStatuses || []).map(s => [s.employment_status_id, s.status_name]);
+    const typeOpts   = (db.employmentTypes || []).map(t => [t.employment_type_id, t.type_name]);
+    const schedOpts  = (db.workSchedules || []).map(s => [s.schedule_id, s.schedule_name]);
 
-    const fDept   = makeSelect(deptOpts, data.department_id);
-    const fRole   = makeSelect(roleOpts, data.role_id);
-    const fStatus = makeSelect(statOpts, data.employment_status);
+    const fDept    = makeSelect(deptOpts, data.department_id);
+    const fRole    = makeSelect(roleOpts, data.role_id);
+    const fStatus  = makeSelect(statusOpts, data.employment_status_id || defaultStatusId);
+    const fType    = makeSelect(typeOpts, data.employment_type_id || "");
+    const fSched   = makeSelect(schedOpts, data.schedule_id || "");
 
-    formGrid.appendChild(buildField("Full Name",        fName));
-    formGrid.appendChild(buildField("Email",            fEmail));
-    formGrid.appendChild(buildField("Contact No",       fContact));
-    formGrid.appendChild(buildField("Hire Date",        fHire));
-    formGrid.appendChild(buildField("Department",       fDept));
-    formGrid.appendChild(buildField("Role",             fRole));
-    formGrid.appendChild(buildField("Hourly Rate (₱)",  fRate));
-    formGrid.appendChild(buildField("Status",           fStatus));
+    formGrid.appendChild(buildField("First Name", fFirst));
+    formGrid.appendChild(buildField("Last Name", fLast));
+    formGrid.appendChild(buildField("Email", fEmail));
+    formGrid.appendChild(buildField("Contact No", fContact));
+    formGrid.appendChild(buildField("Hire Date", fHire));
+    formGrid.appendChild(buildField("Department", fDept));
+    formGrid.appendChild(buildField("Role", fRole));
+    formGrid.appendChild(buildField("Employment Status", fStatus));
+    formGrid.appendChild(buildField("Employment Type", fType));
+    formGrid.appendChild(buildField("Work Schedule", fSched));
 
     body.appendChild(formGrid);
 
@@ -272,23 +269,25 @@ function renderEmployees(db, account, onDbChange) {
     cancelBtn.addEventListener("click", close);
 
     saveBtn.addEventListener("click", async () => {
-      const name  = fName.value.trim();
-      const email = fEmail.value.trim();
-      if (!name || !email) {
-        errEl.textContent = "Full Name and Email are required.";
+      const firstName = fFirst.value.trim();
+      const email     = fEmail.value.trim();
+      if (!firstName || !email) {
+        errEl.textContent = "First Name and Email are required.";
         errEl.style.display = "block";
         return;
       }
 
       const payload = {
-        department_id:      Number(fDept.value) || null,
-        role_id:            Number(fRole.value) || null,
-        full_name:          name,
+        department_id:        Number(fDept.value) || null,
+        role_id:              Number(fRole.value) || null,
+        first_name:           firstName,
+        last_name:            fLast.value.trim(),
         email,
-        contact_no:         fContact.value.trim(),
-        hire_date:          fHire.value,
-        current_hourly_rate: Number(fRate.value) || 0,
-        employment_status:  fStatus.value,
+        contact_no:           fContact.value.trim(),
+        hire_date:            fHire.value,
+        employment_status_id: Number(fStatus.value) || null,
+        employment_type_id:   Number(fType.value) || null,
+        schedule_id:          Number(fSched.value) || null,
       };
 
       errEl.style.display = "none";
@@ -314,12 +313,15 @@ function renderEmployees(db, account, onDbChange) {
     });
   }
 
-  // ── Deactivate/Reactivate confirmation modal ──────────
   function toggleEmployeeStatus(emp) {
     if (!canEdit) return;
 
     const isActive = emp.employment_status === "Active";
-    const newStatus = isActive ? "Inactive" : "Active";
+    const newStatusId = isActive
+      ? employmentStatusId(db, "Resigned", 2)
+      : employmentStatusId(db, "Active", 1);
+    const newLabel = isActive ? "Resigned" : "Active";
+    const name = employeeName(emp);
 
     const body = document.createElement("div");
     body.style.display = "flex";
@@ -329,9 +331,8 @@ function renderEmployees(db, account, onDbChange) {
     const message = document.createElement("p");
     message.className = "text-sm";
     message.textContent = isActive
-      ? `Are you sure you want to deactivate ${emp.full_name}? They will be marked Inactive.`
-      : `Are you sure you want to reactivate ${emp.full_name}? They will be marked Active.`;
-
+      ? `Are you sure you want to deactivate ${name}? Their status will be set to Resigned.`
+      : `Are you sure you want to reactivate ${name}? Their status will be set to Active.`;
     body.appendChild(message);
 
     const footer = document.createElement("div");
@@ -339,11 +340,11 @@ function renderEmployees(db, account, onDbChange) {
 
     const keepBtn = document.createElement("button");
     keepBtn.className = "btn btn-outline";
-    keepBtn.textContent = "Keep as " + emp.employment_status;
+    keepBtn.textContent = "Keep as " + (emp.employment_status || "current");
 
     const confirmBtn = document.createElement("button");
     confirmBtn.className = isActive ? "btn btn-danger" : "btn btn-primary";
-    confirmBtn.innerHTML = isActive ? `Deactivate` : `Reactivate`;
+    confirmBtn.textContent = isActive ? "Deactivate" : "Reactivate";
 
     footer.appendChild(keepBtn);
     footer.appendChild(confirmBtn);
@@ -358,13 +359,15 @@ function renderEmployees(db, account, onDbChange) {
 
     confirmBtn.addEventListener("click", async () => {
       confirmBtn.disabled = true;
-
       try {
-        await updateEmployeeRequest(emp.employee_id, { ...emp, employment_status: newStatus });
+        await updateEmployeeRequest(emp.employee_id, {
+          ...emp,
+          employment_status_id: newStatusId,
+        });
         db.employees = await apiRequest("/employees.php");
         onDbChange(db);
         close();
-        showToast(`${emp.full_name} marked as ${newStatus}.`, "success");
+        showToast(`${name} marked as ${newLabel}.`, "success");
         refresh();
       } catch (err) {
         showToast(err.message || "Could not update status.", "error");

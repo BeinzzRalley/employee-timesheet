@@ -20,7 +20,14 @@ function getNextId(arr, key) {
   return Math.max(...arr.map(x => x[key])) + 1;
 }
 function initials(name) {
-  return name.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
+  return (name || "?").split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
+}
+
+function employeeName(emp) {
+  if (!emp) return "?";
+  if (emp.full_name) return emp.full_name;
+  const name = [emp.first_name, emp.last_name].filter(Boolean).join(" ").trim();
+  return name || "?";
 }
 
 function showToast(msg, type = "default") {

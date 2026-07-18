@@ -46,7 +46,7 @@ function renderClockInOut(db, account, onDbChange) {
   // Loose match — API may return string or number ids
   let openLog = db.timeLogs.find(
     // eslint-disable-next-line eqeqeq
-    l => l.employee_id == empId && l.clock_in.startsWith(today) && !l.clock_out
+    l => l.employee_id == empId && (l.work_date === today || l.clock_in.startsWith(today)) && !l.clock_out
   ) || null;
 
   // Two column layout
@@ -87,10 +87,7 @@ function renderClockInOut(db, account, onDbChange) {
   statusArea.style.cssText = "margin-bottom:24px;min-height:56px";
   clockCard.appendChild(statusArea);
 
-  // Shift selector row
-  const shiftRow = document.createElement("div");
-  shiftRow.style.cssText = "margin-bottom:24px";
-  clockCard.appendChild(shiftRow);
+  // Shift selector removed — schedule comes from employee profile
 
   // Action button
   const actionBtn = document.createElement("button");
@@ -102,13 +99,9 @@ function renderClockInOut(db, account, onDbChange) {
   infoLine.style.cssText = "margin-top:16px;font-size:0.83rem;color:var(--text-muted);text-align:center;min-height:20px";
   clockCard.appendChild(infoLine);
 
-  const shiftOptions = db.shiftCategories.map(s => [s.shift_category_id, s.category_name]);
-  const defaultShift = db.shiftCategories.find(s => s.shift_category_id === 1) ? 1 : (shiftOptions[0]?.[0] ?? 1);
-
   function refreshClock(currentLog) {
     openLog = currentLog;
     statusArea.innerHTML = "";
-    shiftRow.innerHTML = "";
     infoLine.textContent = "";
 
     if (!currentLog) {
@@ -118,16 +111,6 @@ function renderClockInOut(db, account, onDbChange) {
       notClockedBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span> Not clocked in`;
       statusArea.appendChild(notClockedBadge);
 
-      // Shift selector
-      const shiftLabel = document.createElement("label");
-      shiftLabel.textContent = "Shift Category";
-      shiftLabel.style.cssText = "display:block;font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em";
-      const shiftSel = makeSelect(shiftOptions, defaultShift);
-      shiftSel.id = "shift-sel-main";
-      shiftSel.style.width = "100%";
-      shiftRow.appendChild(shiftLabel);
-      shiftRow.appendChild(shiftSel);
-
       actionBtn.textContent = "Clock In";
       actionBtn.style.background = "linear-gradient(135deg,#22c55e,#16a34a)";
       actionBtn.style.color = "#fff";
@@ -136,8 +119,7 @@ function renderClockInOut(db, account, onDbChange) {
         actionBtn.disabled = true;
         actionBtn.textContent = "Clocking in…";
         try {
-          const shiftId = parseInt(document.getElementById("shift-sel-main").value);
-          const result  = await clockInRequest(shiftId);
+          const result  = await clockInRequest();
           // Keep id type consistent for lookup after refresh
           const normResult = { ...result, employee_id: empId };
           const updated = [normResult, ...db.timeLogs];
@@ -162,7 +144,7 @@ function renderClockInOut(db, account, onDbChange) {
 
       const statusBadge = document.createElement("div");
       statusBadge.style.cssText = `display:inline-flex;align-items:center;gap:8px;background:${statusBg};border-radius:8px;padding:10px 16px;font-size:0.85rem;color:${statusColor};font-weight:600`;
-      statusBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${statusDot};display:inline-block;box-shadow:0 0 0 3px ${statusDot}33"></span> ${statusText} · ${currentLog.category_name || "Day Shift"}`;
+      statusBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${statusDot};display:inline-block;box-shadow:0 0 0 3px ${statusDot}33"></span> ${statusText}`;
       statusArea.appendChild(statusBadge);
 
       // Duration counter
@@ -230,7 +212,7 @@ function renderClockInOut(db, account, onDbChange) {
     todayLogsEl.innerHTML = "";
     // eslint-disable-next-line eqeqeq
     const todayLogs = db.timeLogs.filter(
-      l => l.employee_id == empId && l.clock_in.startsWith(today)
+      l => l.employee_id == empId && (l.work_date === today || l.clock_in.startsWith(today))
     );
 
     if (!todayLogs.length) {
@@ -249,7 +231,7 @@ function renderClockInOut(db, account, onDbChange) {
       row.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="font-size:0.78rem;font-weight:600;color:${isLate?"#c2410c":"#15803d"}">${l.status_label || "—"}</span>
-          <span style="font-size:0.75rem;color:var(--text-muted)">${l.category_name || "—"}</span>
+          <span style="font-size:0.75rem;color:var(--text-muted)">${l.break_minutes || 0}m break</span>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:0.83rem">
           <span>In: <b>${fmtTime(l.clock_in)}</b></span>
@@ -302,7 +284,9 @@ function renderClockedInNowView(db, account, onDbChange) {
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
 
   // Today only, still open
-  const activeNow = db.timeLogs.filter(l => l.clock_in.startsWith(today) && !l.clock_out);
+  const activeNow = db.timeLogs.filter(l =>
+    (l.work_date === today || l.clock_in.startsWith(today)) && !l.clock_out
+  );
 
   // Filters
   const filterBar = document.createElement("div");
@@ -387,7 +371,7 @@ function renderClockedInNowView(db, account, onDbChange) {
       return;
     }
 
-    const headers = ["Employee", "Department", "Shift", "Clock In", "Duration", "Status"];
+    const headers = ["Employee", "Department", "Clock In", "Duration", "Status"];
     const rows = filtered.map(l => {
       const empCell = document.createElement("div");
       empCell.className = "emp-cell";
@@ -400,7 +384,6 @@ function renderClockedInNowView(db, account, onDbChange) {
       return [
         empCell,
         employeeDept(l.employee_id),
-        `<span style="font-size:0.78rem">${l.category_name || "—"}</span>`,
         fmtTime(l.clock_in),
         durationCell,
         l.status_label ? badge(l.status_label) : "—",
@@ -478,9 +461,11 @@ function renderLogsView(db, account, onDbChange) {
     ? db.timeLogs
     : db.timeLogs.filter(l => l.employee_id == empId);
 
+  const logDate = (l) => l.work_date || l.clock_in.slice(0, 10);
+
   // Year dropdown from available data
   const nowForYear = new Date();
-  const yearsInData = Array.from(new Set(baseSource.map(l => new Date(l.clock_in).getFullYear())));
+  const yearsInData = Array.from(new Set(baseSource.map(l => new Date(logDate(l)).getFullYear())));
   if (!yearsInData.includes(nowForYear.getFullYear())) yearsInData.push(nowForYear.getFullYear());
   yearsInData.sort((a, b) => b - a);
 
@@ -608,16 +593,19 @@ function renderLogsView(db, account, onDbChange) {
     const showEmployeeCol = companyWide;
     const headers = showEmployeeCol
       ? (canEdit
-          ? ["Employee", "Date", "Clock In", "Clock Out", "Hours", "Shift", "Status", ""]
-          : ["Employee", "Date", "Clock In", "Clock Out", "Hours", "Shift", "Status"])
-      : ["Date", "Clock In", "Clock Out", "Hours", "Shift", "Status"];
+          ? ["Employee", "Date", "Clock In", "Clock Out", "Hours", "Break", "Valid", "Status", ""]
+          : ["Employee", "Date", "Clock In", "Clock Out", "Hours", "Break", "Valid", "Status"])
+      : ["Date", "Clock In", "Clock Out", "Hours", "Break", "Valid", "Status"];
 
     const rows = filtered.map(l => {
-      const dateStr     = fmtDate(l.clock_in);
+      const dateStr     = fmtDate(logDate(l));
       const clockInStr  = fmtTime(l.clock_in);
       const clockOutStr = l.clock_out ? fmtTime(l.clock_out) : `<span style="color:var(--text-muted)">Active</span>`;
       const hoursStr    = l.total_hours != null ? Number(l.total_hours).toFixed(2) + "h" : `<span style="color:var(--text-muted)">—</span>`;
-      const shiftStr    = `<span style="font-size:0.78rem">${l.category_name || "—"}</span>`;
+      const breakStr    = `${l.break_minutes || 0}m`;
+      const validStr    = l.hours_valid === false
+        ? `<span style="color:#dc2626;font-size:0.78rem;font-weight:600">Invalid</span>`
+        : `<span style="color:#16a34a;font-size:0.78rem;font-weight:600">Valid</span>`;
       const statusBadge = l.status_label ? badge(l.status_label) : "—";
 
       if (showEmployeeCol) {
@@ -638,13 +626,13 @@ function renderLogsView(db, account, onDbChange) {
           }));
           actCell.appendChild(editBtn);
 
-          return [empCell, dateStr, clockInStr, clockOutStr, hoursStr, shiftStr, statusBadge, actCell];
+          return [empCell, dateStr, clockInStr, clockOutStr, hoursStr, breakStr, validStr, statusBadge, actCell];
         }
 
-        return [empCell, dateStr, clockInStr, clockOutStr, hoursStr, shiftStr, statusBadge];
+        return [empCell, dateStr, clockInStr, clockOutStr, hoursStr, breakStr, validStr, statusBadge];
       }
 
-      return [dateStr, clockInStr, clockOutStr, hoursStr, shiftStr, statusBadge];
+      return [dateStr, clockInStr, clockOutStr, hoursStr, breakStr, validStr, statusBadge];
     });
 
     card.appendChild(buildTable(headers, rows, `No logs for selected period.`));
@@ -656,10 +644,8 @@ function renderLogsView(db, account, onDbChange) {
 
 // Admin edit modal
 function openEditModal(log, db, onSaved) {
-  const shiftOptions  = db.shiftCategories.map(s => [s.shift_category_id, s.category_name]);
   const statusOptions = db.attendanceStatuses.map(s => [s.status_id, s.status_label]);
 
-  // Format for datetime-local input
   function toDatetimeLocal(dtStr) {
     if (!dtStr) return "";
     const d = new Date(dtStr);
@@ -673,20 +659,30 @@ function openEditModal(log, db, onSaved) {
   form.style.flexDirection = "column";
   form.style.gap = "14px";
 
+  const fWorkDate = makeInput("date", log.work_date || log.clock_in.slice(0, 10));
   const fClockIn  = makeInput("datetime-local", toDatetimeLocal(log.clock_in));
   const fClockOut = makeInput("datetime-local", toDatetimeLocal(log.clock_out));
-  const shiftSel  = makeSelect(shiftOptions,  log.shift_category_id);
+  const fBreak    = makeInput("number", log.break_minutes || 0);
+  fBreak.min = "0";
   const statusSel = makeSelect(statusOptions, log.status_id);
 
-  // Hours preview
+  const validWrap = document.createElement("label");
+  validWrap.style.cssText = "display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.875rem";
+  const fValid = document.createElement("input");
+  fValid.type = "checkbox";
+  fValid.checked = log.hours_valid !== false;
+  validWrap.appendChild(fValid);
+  validWrap.appendChild(document.createTextNode("Hours valid for payroll"));
+
   const hoursPreview = document.createElement("div");
   hoursPreview.style.cssText = "font-size:0.82rem;color:var(--text-muted);margin-top:-8px";
 
   function updateHoursPreview() {
     const inVal  = fClockIn.value;
     const outVal = fClockOut.value;
+    const brk    = parseInt(fBreak.value) || 0;
     if (inVal && outVal) {
-      const diff = (new Date(outVal) - new Date(inVal)) / 3600000;
+      const diff = (new Date(outVal) - new Date(inVal)) / 3600000 - (brk / 60);
       hoursPreview.textContent = diff > 0
         ? `Computed hours: ${diff.toFixed(2)}h`
         : "⚠ Clock-out must be after clock-in";
@@ -696,12 +692,15 @@ function openEditModal(log, db, onSaved) {
   }
   fClockIn.addEventListener("change", updateHoursPreview);
   fClockOut.addEventListener("change", updateHoursPreview);
+  fBreak.addEventListener("input", updateHoursPreview);
 
+  form.appendChild(buildField("Work Date", fWorkDate));
   form.appendChild(buildField("Clock In", fClockIn));
   form.appendChild(buildField("Clock Out (leave blank if active)", fClockOut));
+  form.appendChild(buildField("Break (minutes)", fBreak));
   form.appendChild(hoursPreview);
-  form.appendChild(buildField("Shift Category", shiftSel));
   form.appendChild(buildField("Status", statusSel));
+  form.appendChild(validWrap);
 
   const errEl = document.createElement("div");
   errEl.className = "alert-error";
@@ -745,8 +744,9 @@ function openEditModal(log, db, onSaved) {
       return;
     }
 
+    const brkMin = parseInt(fBreak.value) || 0;
     const total_hours = outVal
-      ? parseFloat(((new Date(outVal) - new Date(inVal)) / 3600000).toFixed(4))
+      ? parseFloat((((new Date(outVal) - new Date(inVal)) / 3600000) - (brkMin / 60)).toFixed(4))
       : null;
 
     errEl.style.display = "none";
@@ -755,11 +755,13 @@ function openEditModal(log, db, onSaved) {
 
     try {
       const updated = await updateTimeLogRequest(log.log_id, {
-        clock_in:          inVal,
-        clock_out:         outVal || null,
+        work_date:     fWorkDate.value,
+        clock_in:      inVal,
+        clock_out:     outVal || null,
         total_hours,
-        shift_category_id: parseInt(shiftSel.value),
-        status_id:         parseInt(statusSel.value),
+        break_minutes: brkMin,
+        hours_valid:   fValid.checked,
+        status_id:     parseInt(statusSel.value),
       });
       close();
       onSaved(updated);

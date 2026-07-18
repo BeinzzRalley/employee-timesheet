@@ -1,25 +1,29 @@
 // ── Dashboard view ────────────────────────────────────
-// Admin: full workforce overview 
-// Employee: personal overview with clock status, hours, leaves, recent time logs list, and pay summary 
+// Employee: personal clock status, hours, leave counts
+// Supervisor: admin-style dashboard scoped to their department (backend)
+// Payroll / System Admin: company-wide workforce overview
 
 function renderDashboard(db, account) {
   const page = document.createElement("div");
   page.className = "page";
 
-  // Valid access_level values: system_admin, payroll_admin, supervisor, employee.
-  // dashboard.php already returns the company-wide (or dept-scoped, for
-  // supervisor) admin-style payload for all three of these — "admin" alone
-  // is never a real access_level value.
-  const isAdmin = account && ["system_admin", "payroll_admin", "supervisor"].includes(account.access_level);
-  const stats   = db.dashboardStats;
+  if (isWorkforceDashboard(account)) {
+    const dept = departmentName(db, account);
+    const subtitle = isSupervisor(account)
+      ? (dept ? `Attendance overview for ${dept}` : "Department attendance overview")
+      : "Company-wide workforce attendance and activity";
 
-  if (isAdmin) {
-    page.appendChild(pageHeader("Dashboard", "Overview of workforce attendance and activity"));
+    page.appendChild(pageHeader("Dashboard", subtitle));
+
+    const scope = scopeBannerProps(db, account);
+    if (scope) page.appendChild(buildScopeBanner(scope));
+
+    const stats = db.dashboardStats;
     if (stats && stats.headcount) {
-      page.appendChild(buildAdminStatGrid(stats));
-      page.appendChild(buildAdminDetailGrid(stats));
+      page.appendChild(buildAdminStatGrid(stats, account));
+      page.appendChild(buildAdminDetailGrid(stats, account));
     } else {
-      page.appendChild(buildAdminStatGridFallback(db));
+      page.appendChild(buildAdminStatGridFallback(db, account));
       const note = document.createElement("div");
       note.className = "alert-error";
       note.style.margin = "12px 0 0";
@@ -27,13 +31,16 @@ function renderDashboard(db, account) {
       page.appendChild(note);
     }
   } else {
-    const emp = account && account.employee_id != null
-      ? db.employees.find(e => e.employee_id === account.employee_id)
-      : null;
+    const emp = linkedEmployee(db, account);
     const displayName = emp ? emp.full_name : (account ? account.username : "Employee");
 
     page.appendChild(pageHeader(`Welcome, ${displayName}`, "Your personal overview"));
-    page.appendChild(buildEmployeeDashboard(db, account, stats, emp));
+    page.appendChild(buildScopeBanner({
+      variant: "personal",
+      title: "Self-service view",
+      detail: "You can clock in/out, view your time logs, file leave, and check your pay history.",
+    }));
+    page.appendChild(buildEmployeeDashboard(db, account, db.dashboardStats, emp));
   }
 
   return page;
@@ -42,15 +49,16 @@ function renderDashboard(db, account) {
 // ═════════════════════════════════════════════════════
 // ADMIN DASHBOARD
 // ═════════════════════════════════════════════════════
-function buildAdminStatGrid(stats) {
+function buildAdminStatGrid(stats, account) {
   const h = stats.headcount;
+  const scopeNote = isSupervisor(account) ? "in your department" : "across all departments";
   const grid = document.createElement("div");
   grid.className = "stat-grid";
   grid.innerHTML = `
     <div class="stat-card">
       <div class="stat-label">Active Employees</div>
       <div class="stat-value indigo">${h.active_employees}</div>
-      <div class="stat-sub">of ${h.total_employees} total</div>
+      <div class="stat-sub">of ${h.total_employees} total · ${scopeNote}</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Present Today</div>
@@ -71,14 +79,18 @@ function buildAdminStatGrid(stats) {
   return grid;
 }
 
-function buildAdminDetailGrid(stats) {
+function buildAdminDetailGrid(stats, account) {
   const grid = document.createElement("div");
   grid.className = "grid-3";
+
+  const deptHeader = isSupervisor(account)
+    ? "Your Department Today"
+    : "Department Attendance Today";
 
   // ── Department attendance ─────────────────────────
   const deptCard = document.createElement("div");
   deptCard.className = "card";
-  deptCard.innerHTML = `<div class="card-header">Department Attendance Today</div>`;
+  deptCard.innerHTML = `<div class="card-header">${deptHeader}</div>`;
   if (!stats.departments || !stats.departments.length) {
     deptCard.innerHTML += `<div class="table-empty">No departments found</div>`;
   } else {
@@ -201,17 +213,18 @@ function buildWeeklyAttendanceChart(stats) {
   return card;
 }
 
-function buildAdminStatGridFallback(db) {
+function buildAdminStatGridFallback(db, account) {
   const activeEmp      = db.employees.filter(e => e.employment_status === "Active").length;
   const pending        = db.leaveRecords.filter(l => l.leave_status === "Pending").length;
   const clockedInToday = db.timeLogs.filter(l => isToday(l.clock_in)).length;
+  const scopeNote = isSupervisor(account) ? "in your department" : "across all departments";
   const grid = document.createElement("div");
   grid.className = "stat-grid";
   grid.innerHTML = `
     <div class="stat-card">
       <div class="stat-label">Active Employees</div>
       <div class="stat-value indigo">${activeEmp}</div>
-      <div class="stat-sub">across all departments</div>
+      <div class="stat-sub">${scopeNote}</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Clocked In Today</div>

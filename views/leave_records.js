@@ -6,12 +6,11 @@ function renderLeaveRecords(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
 
-  // Valid access_level values: system_admin, payroll_admin, supervisor, employee.
-  // Privileged = sees all/dept records + approve/reject (system_admin, payroll_admin, supervisor —
-  // matches leave_records.php PUT, which allows all three, minus approving one's own request).
-  // Full admin = can also hard-delete any record (system_admin, payroll_admin only, per DELETE route).
-  const isAdmin      = ["system_admin", "payroll_admin", "supervisor"].includes(account.access_level);
-  const isFullAdmin  = ["system_admin", "payroll_admin"].includes(account.access_level);
+  const approverView = isLeaveApprover(account);
+  const fullAdmin    = isLeaveFullAdmin(account);
+  const employeeView = isEmployee(account);
+  const supervisorView = isSupervisor(account);
+
   let searchVal = "";
   let filterStatus = "";
 
@@ -30,12 +29,11 @@ function renderLeaveRecords(db, account, onDbChange) {
   }
 
   function render() {
-    // ── Header ──────────────────────────────────────
     const actionEl = document.createElement("div");
     actionEl.style.display = "flex";
     actionEl.style.gap = "8px";
 
-    if (!isAdmin) {
+    if (employeeView) {
       const fileBtn = document.createElement("button");
       fileBtn.className = "btn btn-primary";
       fileBtn.innerHTML = `${icons.plus} File Leave`;
@@ -43,16 +41,31 @@ function renderLeaveRecords(db, account, onDbChange) {
       actionEl.appendChild(fileBtn);
     }
 
-    // db.leaveRecords already comes back role-scoped from the backend
-    // (all records / own department / own records only) — no need to
-    // re-filter by employee_id here.
-    const myLeaves = db.leaveRecords;
+    const pageTitle = employeeView ? "My Leave" : "Leave Records";
+    const pageSub = employeeView
+      ? "File, view, and cancel your leave requests"
+      : supervisorView
+        ? "Review and approve leave for your department — you cannot approve your own requests"
+        : "Company-wide leave management — approve or reject any request";
 
     page.appendChild(pageHeader(
-      "Leave Records",
-      isAdmin ? `${myLeaves.length} total records` : `${myLeaves.length} my requests`,
+      pageTitle,
+      pageSub,
       actionEl.children.length ? actionEl : null
     ));
+
+    if (supervisorView) {
+      const scope = scopeBannerProps(db, account);
+      if (scope) page.appendChild(buildScopeBanner(scope));
+    } else if (fullAdmin) {
+      page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
+    } else if (employeeView) {
+      page.appendChild(buildScopeBanner({
+        variant: "personal",
+        title: "Your leave requests",
+        detail: "You can file new leave, edit pending requests, and cancel before approval.",
+      }));
+    }
 
     // ── Filters card ─────────────────────────────────
     const card = document.createElement("div");
@@ -65,20 +78,11 @@ function renderLeaveRecords(db, account, onDbChange) {
     toolbar.style.marginBottom = "4px";
 
     // Search
-    const searchBar = document.createElement("div");
-    searchBar.className = "search-bar";
-    searchBar.style.flex = "1";
-    searchBar.innerHTML = `${icons.search}`;
-    const searchInput = document.createElement("input");
-    searchInput.type = "text";
-    searchInput.placeholder = isAdmin ? "Search by employee or leave type…" : "Search by leave type…";
-    searchInput.value = searchVal;
-    searchInput.addEventListener("input", e => {
-      searchVal = e.target.value;
-      renderTable(card);
-    });
-    searchBar.appendChild(searchInput);
-    toolbar.appendChild(searchBar);
+    toolbar.appendChild(buildSearchBar({
+      placeholder: approverView ? "Search by employee or leave type…" : "Search by leave type…",
+      value: searchVal,
+      onInput: (val) => { searchVal = val; renderTable(card); },
+    }));
 
     // Status filter
     const statusFilter = makeSelect(
@@ -106,7 +110,7 @@ function renderLeaveRecords(db, account, onDbChange) {
     if (filterStatus) leaveParams.set('status', filterStatus);
     const filtered = await apiRequest(`/leave_records.php?${leaveParams.toString()}`);
 
-    const headers = isAdmin
+    const headers = approverView
       ? ["Employee", "Leave Type", "From", "To", "Status", "Remarks", ""]
       : ["Leave Type", "From", "To", "Status", "Remarks", ""];
 
@@ -115,7 +119,7 @@ function renderLeaveRecords(db, account, onDbChange) {
       actions.style.display = "flex";
       actions.style.gap = "6px";
 
-      if (isAdmin) {
+      if (approverView) {
         const viewBtn = document.createElement("button");
         viewBtn.className = "btn btn-ghost btn-sm";
         viewBtn.innerHTML = `${icons.eye} View`;
@@ -140,7 +144,7 @@ function renderLeaveRecords(db, account, onDbChange) {
           actions.appendChild(rejectBtn);
         }
 
-        if (isFullAdmin) {
+        if (fullAdmin) {
           const delBtn = document.createElement("button");
           delBtn.className = "btn btn-ghost btn-sm";
           delBtn.style.color = "var(--red, #ef4444)";
@@ -176,7 +180,7 @@ function renderLeaveRecords(db, account, onDbChange) {
         actions,
       ];
 
-      if (isAdmin) {
+      if (approverView) {
         const empCell = document.createElement("div");
         empCell.className = "emp-cell";
         empCell.style.cursor = "pointer";
@@ -212,111 +216,32 @@ function renderLeaveRecords(db, account, onDbChange) {
   // ── Admin: delete confirmation modal ──────────────────
   function deleteLeave(leave) {
     const name = leave.full_name || "this employee";
-
-    const body = document.createElement("div");
-    body.style.display = "flex";
-    body.style.flexDirection = "column";
-    body.style.gap = "18px";
-
-    const message = document.createElement("p");
-    message.className = "text-sm";
-    message.textContent = `Are you sure you want to delete this leave record for ${name}? This action cannot be undone.`;
-
-    body.appendChild(message);
-
-    const footer = document.createElement("div");
-    footer.className = "modal-footer";
-
-    const keepBtn = document.createElement("button");
-    keepBtn.className = "btn btn-outline";
-    keepBtn.textContent = "Keep Record";
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "btn btn-danger";
-    deleteBtn.innerHTML = `Delete Record`;
-
-    footer.appendChild(keepBtn);
-    footer.appendChild(deleteBtn);
-    body.appendChild(footer);
-
-    const { close } = openModal({
+    openConfirmModal({
       title: "Delete Leave Record",
-      body,
-    });
-
-    keepBtn.addEventListener("click", close);
-
-    deleteBtn.addEventListener("click", async () => {
-      deleteBtn.disabled = true;
-
-      try {
-        await apiRequest(`/leave_records.php?id=${leave.leave_id}`, {
-          method: "DELETE",
-        });
-
+      message: `Are you sure you want to delete this leave record for ${name}? This action cannot be undone.`,
+      keepLabel: "Keep Record",
+      confirmLabel: "Delete Record",
+      onConfirm: async () => {
+        await apiRequest(`/leave_records.php?id=${leave.leave_id}`, { method: "DELETE" });
         await reloadLeaves();
-        close();
         showToast("Leave record removed.", "success");
         refresh();
-      } catch (err) {
-        showToast(err.message || "Could not delete record.", "error");
-        deleteBtn.disabled = false;
-      }
+      },
     });
   }
 
-  // ── Employee: cancel confirmation modal ───────────────
   function openCancelModal(leave) {
-    const body = document.createElement("div");
-    body.style.display = "flex";
-    body.style.flexDirection = "column";
-    body.style.gap = "18px";
-
-    const message = document.createElement("p");
-    message.className = "text-sm";
-    message.textContent =
-      "Are you sure you want to cancel this leave request? This action cannot be undone.";
-
-    body.appendChild(message);
-
-    const footer = document.createElement("div");
-    footer.className = "modal-footer";
-
-    const keepBtn = document.createElement("button");
-    keepBtn.className = "btn btn-outline";
-    keepBtn.textContent = "Keep Request";
-
-    const cancelBtn = document.createElement("button");
-    cancelBtn.className = "btn btn-danger";
-    cancelBtn.innerHTML = `Cancel Request`;
-
-    footer.appendChild(keepBtn);
-    footer.appendChild(cancelBtn);
-    body.appendChild(footer);
-
-    const { close } = openModal({
+    openConfirmModal({
       title: "Cancel Leave Request",
-      body,
-    });
-
-    keepBtn.addEventListener("click", close);
-
-    cancelBtn.addEventListener("click", async () => {
-      cancelBtn.disabled = true;
-
-      try {
-        await apiRequest(`/leave_records.php?id=${leave.leave_id}`, {
-          method: "DELETE",
-        });
-
+      message: "Are you sure you want to cancel this leave request? This action cannot be undone.",
+      keepLabel: "Keep Request",
+      confirmLabel: "Cancel Request",
+      onConfirm: async () => {
+        await apiRequest(`/leave_records.php?id=${leave.leave_id}`, { method: "DELETE" });
         await reloadLeaves();
-        close();
         showToast("Leave request cancelled.", "success");
         refresh();
-      } catch (err) {
-        showToast(err.message || "Could not cancel leave request.", "error");
-        cancelBtn.disabled = false;
-      }
+      },
     });
   }
 
@@ -461,14 +386,6 @@ function renderLeaveRecords(db, account, onDbChange) {
           ["Paternity Leave", "Paternity Leave"],
           ["Unpaid Leave",    "Unpaid Leave"],
         ];
-    const leaveTypes = [
-      ["Sick Leave",       "Sick Leave"],
-      ["Vacation Leave",   "Vacation Leave"],
-      ["Emergency Leave",  "Emergency Leave"],
-      ["Maternity Leave",  "Maternity Leave"],
-      ["Paternity Leave",  "Paternity Leave"],
-      ["Unpaid Leave",     "Unpaid Leave"],
-    ];
 
     const fType    = makeSelect(leaveTypeOptions, data.leave_type || (leaveTypeOptions[0] && leaveTypeOptions[0][0]) || "");
     const fFrom    = makeInput("date", data.date_from);

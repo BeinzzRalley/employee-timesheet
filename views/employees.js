@@ -17,12 +17,12 @@ function renderEmployees(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
 
-  const level = account ? account.access_level : null;
-  const canWrite = level === "system_admin" || level === "payroll_admin"; // create/edit/deactivate
-  const isSupervisor = level === "supervisor";
+  const canCreate = canCreateEmployee(account);
+  const canEdit   = canEditEmployee(account);
+  const supervisorView = isSupervisor(account);
 
   let searchVal    = "";
-  let filterDeptId = ""; // "" = all departments
+  let filterDeptId = "";
 
   function refresh() {
     page.innerHTML = "";
@@ -30,32 +30,42 @@ function renderEmployees(db, account, onDbChange) {
   }
 
   function render() {
-    // Header
     let addBtn = null;
-    if (canWrite) {
+    if (canCreate) {
       addBtn = document.createElement("button");
       addBtn.className = "btn btn-primary";
       addBtn.innerHTML = `${icons.plus} Add Employee`;
       addBtn.addEventListener("click", () => openEmployeeModal(null));
     }
+
+    const subtitle = supervisorView
+      ? "View-only list of employees in your department"
+      : canCreate
+        ? "Full employee management — add, edit, and deactivate"
+        : "Edit existing employees — new hires require System Admin";
+
     page.appendChild(pageHeader(
-      isSupervisor ? "My Department" : "Employees",
-      `${db.employees.length} total`,
+      supervisorView ? "My Department" : "Employees",
+      subtitle,
       addBtn
     ));
 
-    // Card
+    if (supervisorView) {
+      const scope = scopeBannerProps(db, account);
+      if (scope) page.appendChild(buildScopeBanner(scope));
+    } else if (isPureAdmin(account)) {
+      const scope = scopeBannerProps(db, account);
+      if (scope) page.appendChild(buildScopeBanner(scope));
+    }
+
     const card = document.createElement("div");
     card.className = "card";
 
-    if (isSupervisor) {
-      // The backend always scopes supervisors to their own department and
-      // ignores search/department_id filters, so don't show controls that
-      // would imply they can search or filter beyond that.
+    if (supervisorView) {
       const note = document.createElement("div");
       note.className = "text-xs text-gray";
       note.style.marginBottom = "10px";
-      note.textContent = "Showing employees in your department.";
+      note.textContent = "Read-only — you cannot add, edit, or deactivate employees.";
       card.appendChild(note);
     } else {
       // ── Toolbar: search + department filter ──────────
@@ -102,7 +112,7 @@ function renderEmployees(db, account, onDbChange) {
     // Ask backend for filtered results. Supervisors are scoped server-side
     // regardless of what we send, so we simply don't send filters for them.
     const params = new URLSearchParams();
-    if (!isSupervisor) {
+    if (!supervisorView) {
       if (searchVal)    params.set('search', searchVal);
       if (filterDeptId) params.set('department_id', filterDeptId);
     }
@@ -148,7 +158,7 @@ function renderEmployees(db, account, onDbChange) {
 
       let actionsCell = `<span class="text-xs text-gray">—</span>`;
 
-      if (canWrite) {
+      if (canEdit) {
         const editBtn = document.createElement("button");
         editBtn.className = "btn btn-ghost btn-sm";
         editBtn.innerHTML = `${icons.pencil} Edit`;
@@ -189,7 +199,8 @@ function renderEmployees(db, account, onDbChange) {
   }
 
   function openEmployeeModal(existing) {
-    if (!canWrite) return; // defensive — buttons that trigger this aren't rendered anyway
+    if (!canEdit && !canCreate) return;
+    if (!existing && !canCreate) return;
 
     const isEdit = !!existing;
     const blankEmp = {
@@ -305,7 +316,7 @@ function renderEmployees(db, account, onDbChange) {
 
   // ── Deactivate/Reactivate confirmation modal ──────────
   function toggleEmployeeStatus(emp) {
-    if (!canWrite) return; // defensive
+    if (!canEdit) return;
 
     const isActive = emp.employment_status === "Active";
     const newStatus = isActive ? "Inactive" : "Active";

@@ -1,18 +1,11 @@
 // ── App state ─────────────────────────────────────────
-let db          = emptyDb();
-let account     = null;
-let activeView  = "dashboard";
-let loadError   = null;
+let db            = emptyDb();
+let account       = null;
+let activeView    = "dashboard";
+let loadError     = null;
 let checkingSession = true;
 
 const root = document.getElementById("app");
-
-// ── Icons ─────────────────────────────────────────────
-const clockIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-const liveIcon  = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>`;
-const logsIcon  = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-const payIcon   = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`;
-const shiftIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><line x1="2" y1="2" x2="22" y2="22" stroke-width="1.5"/></svg>`;
 
 // ── Boot screen ───────────────────────────────────────
 function renderBootScreen() {
@@ -25,74 +18,92 @@ function renderBootScreen() {
   return wrap;
 }
 
-// ── Access levels ─────────────────────────────────────
-// Mirrors middleware/helpers.php: employee, supervisor, payroll_admin, system_admin
-const LEVEL = {
-  SYSTEM_ADMIN:  "system_admin",
-  PAYROLL_ADMIN: "payroll_admin",
-  SUPERVISOR:    "supervisor",
-  EMPLOYEE:      "employee",
-};
+// ── Access levels (alias for permissions.js) ─────────
+const LEVEL = ACCESS;
 
-// ── Navigation, per role ────────────────────────────────
-// Each nav's items only include views that role's backend routes actually
-// allow. Button-level permissions (e.g. who can Add/Edit/Delete) are handled
-// inside the individual view files using `account.access_level`.
+// ── Navigation ────────────────────────────────────────
+// Sidebar sections for admin roles; flat lists for supervisor/employee.
 
-const navSystemAdmin = [
-  { id: "dashboard",         label: "Dashboard",         icon: icons.dashboard  },
-  { id: "employees",         label: "Employees",         icon: icons.users      },
-  { id: "departments",       label: "Departments",       icon: icons.briefcase  },
-  { id: "accounts",          label: "Accounts",          icon: icons.userPlus   },
-  { id: "leave_records",     label: "Leave Records",     icon: icons.fileText   },
-  { id: "clocked_in_now",    label: "Clocked In Now",    icon: liveIcon         },
-  { id: "my_logs",           label: "Time Logs",         icon: logsIcon         },
-  { id: "payroll",           label: "Payroll",           icon: payIcon          },
-  { id: "shift_categories",  label: "Shift Categories",  icon: shiftIcon        },
-  { id: "employment_status", label: "Employment Status", icon: icons.users      },
-  { id: "work_schedules",    label: "Work Schedules",    icon: shiftIcon        },
-  { id: "employment_types",  label: "Employment Types",  icon: icons.briefcase  },
-  { id: "holidays",          label: "Holidays",          icon: icons.fileText   },
-  { id: "overtime_categories", label: "Overtime Categories", icon: shiftIcon    },
-  { id: "reports",           label: "Reports",           icon: icons.barChart   },
-  { id: "audit_log",         label: "Audit Log",         icon: icons.history    },
+const SYSTEM_ADMIN_NAV = [
+  {
+    label: "Overview",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: icons.dashboard },
+      { id: "reports",   label: "Reports",   icon: icons.barChart  },
+    ],
+  },
+  {
+    label: "Workforce",
+    items: [
+      { id: "employees",      label: "Employees",      icon: icons.users    },
+      { id: "leave_records",  label: "Leave Records",  icon: icons.fileText },
+      { id: "clocked_in_now", label: "Clocked In Now", icon: icons.live     },
+      { id: "my_logs",        label: "Time Logs",      icon: icons.calendar },
+      { id: "payroll",        label: "Payroll",        icon: icons.pay      },
+    ],
+  },
+  {
+    label: "Configuration",
+    items: [
+      { id: "shift_categories",    label: "Shift Categories",    icon: icons.shift     },
+      { id: "employment_status",   label: "Employment Status",   icon: icons.users     },
+      { id: "work_schedules",      label: "Work Schedules",      icon: icons.shift     },
+      { id: "employment_types",    label: "Employment Types",    icon: icons.briefcase },
+      { id: "holidays",            label: "Holidays",            icon: icons.fileText  },
+      { id: "overtime_categories", label: "Overtime Categories", icon: icons.shift     },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { id: "departments", label: "Departments", icon: icons.briefcase },
+      { id: "accounts",    label: "Accounts",    icon: icons.userPlus  },
+      { id: "audit_log",   label: "Audit Log",   icon: icons.history   },
+    ],
+  },
 ];
 
-// payroll_admin: everything system_admin has EXCEPT Departments, Accounts,
-// and Audit Log (those routes hard-require system_admin in the backend).
-const navPayrollAdmin = navSystemAdmin.filter(
-  n => !["departments", "accounts", "audit_log"].includes(n.id)
-);
-
-// supervisor: dept-scoped Employees + their own operational views. No admin
-// configuration pages (those never accept a "supervisor" access level).
-const navSupervisor = [
-  { id: "dashboard",       label: "Dashboard",      icon: icons.dashboard },
-  { id: "employees",       label: "My Department",  icon: icons.users     },
-  { id: "clocked_in_now",  label: "Clocked In Now", icon: liveIcon        },
-  { id: "leave_records",   label: "Leave Records",  icon: icons.fileText  },
-  { id: "time_logs",       label: "Clock In / Out", icon: clockIcon       },
-  { id: "my_logs",         label: "My Time Logs",   icon: logsIcon        },
-  { id: "payroll",         label: "My Pay",         icon: payIcon         },
+const PAYROLL_ADMIN_NAV = [
+  SYSTEM_ADMIN_NAV[0],
+  SYSTEM_ADMIN_NAV[1],
+  SYSTEM_ADMIN_NAV[2],
 ];
 
-// employee: self-service only.
-const navEmployee = [
+const SUPERVISOR_NAV = [
+  { id: "dashboard",      label: "Dashboard",      icon: icons.dashboard },
+  { id: "employees",      label: "My Department",  icon: icons.users     },
+  { id: "clocked_in_now", label: "Clocked In Now", icon: icons.live      },
+  { id: "leave_records",  label: "Leave Records",  icon: icons.fileText  },
+  { id: "time_logs",      label: "Clock In / Out", icon: icons.clock     },
+  { id: "my_logs",        label: "My Time Logs",   icon: icons.calendar  },
+  { id: "payroll",        label: "My Pay",         icon: icons.pay       },
+];
+
+const EMPLOYEE_NAV = [
   { id: "dashboard",     label: "Dashboard",      icon: icons.dashboard },
-  { id: "time_logs",     label: "Clock In / Out",  icon: clockIcon      },
-  { id: "my_logs",       label: "My Time Logs",    icon: logsIcon       },
-  { id: "leave_records", label: "My Leave",        icon: icons.fileText },
-  { id: "payroll",       label: "My Pay",          icon: payIcon        },
+  { id: "time_logs",     label: "Clock In / Out", icon: icons.clock     },
+  { id: "my_logs",       label: "My Time Logs",   icon: icons.calendar  },
+  { id: "leave_records", label: "My Leave",       icon: icons.fileText  },
+  { id: "payroll",       label: "My Pay",         icon: icons.pay       },
 ];
+
+function flattenNavSections(sections) {
+  return sections.flatMap(s => s.items);
+}
+
+function navSectionsForAccount(acc) {
+  switch (accessLevel(acc)) {
+    case ACCESS.SYSTEM_ADMIN:  return SYSTEM_ADMIN_NAV;
+    case ACCESS.PAYROLL_ADMIN: return PAYROLL_ADMIN_NAV;
+    default:                   return null;
+  }
+}
 
 function navForAccount(acc) {
-  switch (acc && acc.access_level) {
-    case LEVEL.SYSTEM_ADMIN:  return navSystemAdmin;
-    case LEVEL.PAYROLL_ADMIN: return navPayrollAdmin;
-    case LEVEL.SUPERVISOR:    return navSupervisor;
-    case LEVEL.EMPLOYEE:      return navEmployee;
-    default:                  return navEmployee; // safest fallback
-  }
+  const sections = navSectionsForAccount(acc);
+  if (sections) return flattenNavSections(sections);
+  if (accessLevel(acc) === ACCESS.SUPERVISOR) return SUPERVISOR_NAV;
+  return EMPLOYEE_NAV;
 }
 
 // ── Data load ─────────────────────────────────────────
@@ -102,6 +113,58 @@ async function loadDb() {
     loadError = null;
   } catch (err) {
     loadError = err.message || "Failed to load data.";
+  }
+}
+
+// ── View routing ──────────────────────────────────────
+function renderView(viewId, db, account, onDbChange) {
+  const adminConfig = isAdminConfig(account);
+
+  switch (viewId) {
+    case "employees":
+      return canViewEmployees(account)
+        ? renderEmployees(db, account, onDbChange)
+        : renderDashboard(db, account);
+    case "departments":
+      return isSystemAdmin(account)
+        ? renderDepartments(db, account, onDbChange)
+        : renderDashboard(db, account);
+    case "accounts":
+      return isSystemAdmin(account)
+        ? renderAccounts(db, onDbChange)
+        : renderDashboard(db, account);
+    case "leave_records":
+      return renderLeaveRecords(db, account, onDbChange);
+    case "clocked_in_now":
+      return canViewClockedInNow(account)
+        ? renderClockedInNow(db, account, onDbChange)
+        : renderDashboard(db, account);
+    case "time_logs":
+      return renderTimeLogs(db, account, onDbChange);
+    case "my_logs":
+      return renderMyLogs(db, account, onDbChange);
+    case "payroll":
+      return renderPayroll(db, account, onDbChange);
+    case "shift_categories":
+      return adminConfig ? renderShiftCategories(db, onDbChange) : renderDashboard(db, account);
+    case "employment_status":
+      return adminConfig ? renderEmploymentStatus(db, onDbChange) : renderDashboard(db, account);
+    case "work_schedules":
+      return adminConfig ? renderWorkSchedules(db, onDbChange) : renderDashboard(db, account);
+    case "employment_types":
+      return adminConfig ? renderEmploymentTypes(db, onDbChange) : renderDashboard(db, account);
+    case "holidays":
+      return adminConfig ? renderHolidays(db, onDbChange) : renderDashboard(db, account);
+    case "overtime_categories":
+      return adminConfig ? renderOvertimeCategories(db, onDbChange) : renderDashboard(db, account);
+    case "reports":
+      return adminConfig ? renderReports(db, onDbChange) : renderDashboard(db, account);
+    case "audit_log":
+      return isSystemAdmin(account)
+        ? renderAuditLog(db, onDbChange)
+        : renderDashboard(db, account);
+    default:
+      return renderDashboard(db, account);
   }
 }
 
@@ -133,20 +196,19 @@ async function renderApp() {
     return;
   }
 
-  const level   = account.access_level;
-  const navItems = navForAccount(account);
-  const allowed  = navItems.map(n => n.id);
+  const navItems    = navForAccount(account);
+  const navSections = navSectionsForAccount(account);
+  const allowed     = navItems.map(n => n.id);
 
   if (!allowed.includes(activeView)) activeView = "dashboard";
 
-  const emp = account.employee_id != null
-    ? db.employees.find(e => e.employee_id === account.employee_id)
-    : null;
+  const emp = linkedEmployee(db, account);
 
   const layout = document.createElement("div");
   layout.className = "layout";
 
   const sidebar = buildSidebar({
+    navSections,
     navItems,
     activeId: activeView,
     onNav: (id) => {
@@ -167,127 +229,34 @@ async function renderApp() {
   const main = document.createElement("main");
   main.className = "main";
 
-  const dbChangeHandler = (updated) => { db = updated; };
+  const onDbChange = (updated) => { db = updated; };
+  main.appendChild(renderView(activeView, db, account, onDbChange));
 
-  // System Admin / Payroll Admin — full admin-side config pages.
-  // These backend routes never accept "supervisor" or "employee".
-  const isAdminConfigLevel = level === LEVEL.SYSTEM_ADMIN || level === LEVEL.PAYROLL_ADMIN;
-
-  let view;
-  switch (activeView) {
-    case "employees":
-      // employees.php GET allows system_admin/payroll_admin/supervisor
-      // (each scoped differently server-side). renderEmployees uses
-      // `account` to decide which buttons (Add/Edit/Deactivate) to show.
-      view = allowed.includes("employees")
-        ? renderEmployees(db, account, dbChangeHandler)
-        : renderDashboard(db, account);
-      break;
-    case "departments":
-      // departments.php write ops are system_admin only.
-      view = level === LEVEL.SYSTEM_ADMIN
-        ? renderDepartments(db, account, dbChangeHandler)
-        : renderDashboard(db, account);
-      break;
-    case "accounts":
-      // accounts.php is system_admin only, full stop.
-      view = level === LEVEL.SYSTEM_ADMIN
-        ? renderAccounts(db, dbChangeHandler)
-        : renderDashboard(db, account);
-      break;
-    case "leave_records":
-      view = renderLeaveRecords(db, account, dbChangeHandler);
-      break;
-    case "clocked_in_now":
-      view = allowed.includes("clocked_in_now")
-        ? renderClockedInNow(db, account, dbChangeHandler)
-        : renderDashboard(db, account);
-      break;
-    case "time_logs":
-      view = renderTimeLogs(db, account, dbChangeHandler);
-      break;
-    case "my_logs":
-      view = renderMyLogs(db, account, dbChangeHandler);
-      break;
-    case "payroll":
-      view = renderPayroll(db, account, dbChangeHandler);
-      break;
-    case "shift_categories":
-      view = isAdminConfigLevel ? renderShiftCategories(db, dbChangeHandler) : renderDashboard(db, account);
-      break;
-    case "employment_status":
-      view = isAdminConfigLevel ? renderEmploymentStatus(db, dbChangeHandler) : renderDashboard(db, account);
-      break;
-    case "work_schedules":
-      view = isAdminConfigLevel ? renderWorkSchedules(db, dbChangeHandler) : renderDashboard(db, account);
-      break;
-    case "employment_types":
-      view = isAdminConfigLevel ? renderEmploymentTypes(db, dbChangeHandler) : renderDashboard(db, account);
-      break;
-    case "holidays":
-      view = isAdminConfigLevel ? renderHolidays(db, dbChangeHandler) : renderDashboard(db, account);
-      break;
-    case "overtime_categories":
-      view = isAdminConfigLevel ? renderOvertimeCategories(db, dbChangeHandler) : renderDashboard(db, account);
-      break;
-    case "reports":
-      view = isAdminConfigLevel ? renderReports(db, dbChangeHandler) : renderDashboard(db, account);
-      break;
-    case "audit_log":
-      // audit_log.php is system_admin only, full stop.
-      view = level === LEVEL.SYSTEM_ADMIN
-        ? renderAuditLog(db, dbChangeHandler)
-        : renderDashboard(db, account);
-      break;
-    default:
-      view = renderDashboard(db, account);
-  }
-
-  main.appendChild(view);
   layout.appendChild(sidebar);
   layout.appendChild(main);
   root.appendChild(layout);
 }
 
 // ── Change Password Modal ─────────────────────────────
-// Self-service: any logged-in user can change their own password.
-
 function openChangePasswordModal() {
   const body = document.createElement("div");
-  body.style.display = "flex";
-  body.style.flexDirection = "column";
-  body.style.gap = "14px";
+  body.style.cssText = "display:flex;flex-direction:column;gap:14px";
 
   const fCurrent = makeInput("password", "", "Enter current password");
   const fNew     = makeInput("password", "", "At least 6 characters");
   const fConfirm = makeInput("password", "", "Re-enter new password");
 
   body.appendChild(buildField("Current Password", fCurrent));
-  body.appendChild(buildField("New Password",     fNew));
+  body.appendChild(buildField("New Password", fNew));
   body.appendChild(buildField("Confirm New Password", fConfirm));
 
-  const errEl = document.createElement("div");
-  errEl.className = "alert-error";
-  errEl.style.display = "none";
-  body.appendChild(errEl);
-
-  const footer = document.createElement("div");
-  footer.className = "modal-footer";
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.className = "btn btn-outline";
-  cancelBtn.textContent = "Cancel";
-
-  const saveBtn = document.createElement("button");
-  saveBtn.className = "btn btn-primary";
-  saveBtn.innerHTML = `${icons.check} Change Password`;
-
-  footer.appendChild(cancelBtn);
-  footer.appendChild(saveBtn);
-  body.appendChild(footer);
+  const { errEl, cancelBtn, saveBtn } = appendModalFooter(body, {
+    isEdit: false,
+    saveLabel: () => "Change Password",
+    onSave: null,
+  });
 
   const { close } = openModal({ title: "Change Password", body });
-
   cancelBtn.addEventListener("click", close);
 
   saveBtn.addEventListener("click", async () => {
@@ -317,10 +286,7 @@ function openChangePasswordModal() {
     try {
       await apiRequest("/auth.php?action=change_password", {
         method: "POST",
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password:     newPassword,
-        }),
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
       });
       close();
       showToast("Password changed successfully.", "success");
@@ -339,13 +305,11 @@ async function boot() {
 
   try {
     account = await apiRequest("/auth.php?action=me");
-  } catch (err) {
+  } catch (_) {
     account = null;
   }
 
-  if (account) {
-    await loadDb();
-  }
+  if (account) await loadDb();
 
   checkingSession = false;
   renderApp();

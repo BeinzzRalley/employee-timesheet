@@ -1,8 +1,5 @@
-// "clock_in_out"  → Clock In / Out panel  (employee only)
-// "my_logs"       → Attendance history with day/week/month/year filter
-// Admin gets:     → Full log table with edit, same filter controls
+// Time logs views — clock in/out, history table, live clocked-in list
 
-// ── Entry point called by app.js 
 function renderTimeLogs(db, account, onDbChange) {
   return renderClockInOut(db, account, onDbChange);
 }
@@ -11,59 +8,55 @@ function renderMyLogs(db, account, onDbChange) {
   return renderLogsView(db, account, onDbChange);
 }
 
-// clocked in now
 function renderClockedInNow(db, account, onDbChange) {
   return renderClockedInNowView(db, account, onDbChange);
 }
 
-// CLOCK IN / OUT VIEW
+// Clock in / out page
 function renderClockInOut(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
 
-  const level = account ? account.access_level : null;
-  // system_admin and payroll_admin are pure HR/admin roles that never clock
-  // in. Supervisors do clock in themselves (time_logs.php's clock_in/
-  // clock_out actions just require a linked employee_id, same as employees).
-  const isPureAdmin = level === "system_admin" || level === "payroll_admin";
-  const empId = account ? account.employee_id : null;
-
-  if (isPureAdmin) {
-    // Admins don't clock in — show a simple redirect message
-    page.appendChild(pageHeader("Clock In / Out", "Admin accounts do not clock in"));
+  if (isPureAdmin(account)) {
+    page.appendChild(pageHeader("Time Logs", "Admin accounts do not clock in"));
+    page.appendChild(buildScopeBanner({
+      variant: "company",
+      title: "Admin role — no clock-in",
+      detail: "Payroll and System Admins manage attendance via Time Logs. Use that page to view and edit all employee records.",
+    }));
     const info = document.createElement("div");
     info.className = "card";
     info.style.padding = "32px";
     info.style.textAlign = "center";
     info.style.color = "var(--text-muted)";
-    info.innerHTML = `<div style="font-size:2rem;margin-bottom:8px">🔒</div><p>Admins do not have a clock-in record. View all logs in <b>Time Logs</b>.</p>`;
+    info.innerHTML = `<div style="font-size:2rem;margin-bottom:8px">🔒</div><p>Open <b>Time Logs</b> from the sidebar to view and edit company-wide attendance.</p>`;
     page.appendChild(info);
     return page;
   }
 
+  const empId = account ? account.employee_id : null;
   if (empId == null) {
     page.appendChild(pageHeader("Clock In / Out", "No employee record linked"));
     return page;
   }
 
-  // Use local date (not UTC) so it matches the server-stored PH date.
+  // Local date, matches server timezone
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
-  // Use == (not ===) for employee_id to handle string/integer type mismatch
-  // between what the API returns vs what account.employee_id holds.
+  // Loose match — API may return string or number ids
   let openLog = db.timeLogs.find(
     // eslint-disable-next-line eqeqeq
     l => l.employee_id == empId && l.clock_in.startsWith(today) && !l.clock_out
   ) || null;
 
-  // ── Layout: two columns ──────────────────────────────
+  // Two column layout
   const wrap = document.createElement("div");
   wrap.style.display = "grid";
   wrap.style.gridTemplateColumns = "1fr 340px";
   wrap.style.gap = "20px";
   wrap.style.alignItems = "start";
 
-  // ── Left: Clock panel ────────────────────────────────
+  // Left — clock panel
   const clockCard = document.createElement("div");
   clockCard.className = "card";
   clockCard.style.padding = "36px 32px";
@@ -145,8 +138,7 @@ function renderClockInOut(db, account, onDbChange) {
         try {
           const shiftId = parseInt(document.getElementById("shift-sel-main").value);
           const result  = await clockInRequest(shiftId);
-          // Normalise employee_id type to match empId so the find() at the top
-          // of renderClockInOut always locates this log after a page refresh.
+          // Keep id type consistent for lookup after refresh
           const normResult = { ...result, employee_id: empId };
           const updated = [normResult, ...db.timeLogs];
           db = { ...db, timeLogs: updated };
@@ -221,7 +213,7 @@ function renderClockInOut(db, account, onDbChange) {
 
   refreshClock(openLog);
 
-  // ── Right: Today's logs ──────────────────────────────
+  // Right — today list
   const todayCard = document.createElement("div");
   todayCard.className = "card";
   todayCard.style.padding = "20px";
@@ -274,7 +266,6 @@ function renderClockInOut(db, account, onDbChange) {
   wrap.appendChild(clockCard);
   wrap.appendChild(todayCard);
 
-  // Build page header with no subtitle
   const ph = document.createElement("div");
   ph.className = "page-header";
   ph.innerHTML = `<div class="page-header-text"><h1>Clock In / Out</h1><p>Record your attendance for today</p></div>`;
@@ -284,28 +275,42 @@ function renderClockInOut(db, account, onDbChange) {
   return page;
 }
 
-// CURRENTLY CLOCKED IN (admin only, today's active clock-ins)
-// clocked in now
+// Live list of who is clocked in today
 function renderClockedInNowView(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
 
-  page.appendChild(pageHeader("Currently Clocked In", "Employees who are clocked in right now, today"));
+  const supervisorView = isSupervisor(account);
+  page.appendChild(pageHeader(
+    "Currently Clocked In",
+    supervisorView
+      ? "Live attendance for your department — use Clocked In Now for team view, My Time Logs for your own records"
+      : "Employees who are clocked in right now, today"
+  ));
 
-  // Use local date (not UTC) so it matches the server-stored PH date.
+  if (supervisorView) {
+    const scope = scopeBannerProps(db, account);
+    if (scope) page.appendChild(buildScopeBanner({
+      ...scope,
+      detail: "List is limited to your department. The department filter only narrows within that scope.",
+    }));
+  } else if (isPureAdmin(account)) {
+    page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
+  }
+
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
 
-  // Active = clocked in today and not yet clocked out. Restricting to
-  // clock_in.startsWith(today) keeps stale/forgotten open logs from prior
-  // days out of this "right now" view.
+  // Today only, still open
   const activeNow = db.timeLogs.filter(l => l.clock_in.startsWith(today) && !l.clock_out);
 
-  // ── Filter bar: department + search ───────────────────
+  // Filters
   const filterBar = document.createElement("div");
   filterBar.style.cssText = "display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center";
 
-  const deptOptions = [["all", "All Departments"], ...db.departments.map(d => [String(d.department_id), d.department_name])];
+  const deptOptions = supervisorView
+    ? [["all", "All in my department"], ...db.departments.map(d => [String(d.department_id), d.department_name])]
+    : [["all", "All Departments"], ...db.departments.map(d => [String(d.department_id), d.department_name])];
   const deptSel = makeSelect(deptOptions, "all");
   deptSel.style.width = "200px";
   filterBar.appendChild(deptSel);
@@ -431,44 +436,49 @@ function renderClockedInNowView(db, account, onDbChange) {
   return page;
 }
 
-// MY LOGS / ALL LOGS VIEW
+// Attendance history — personal or company-wide
 function renderLogsView(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
 
-  const level = account ? account.access_level : null;
-  // time_logs.php GET: system_admin/payroll_admin see all logs and can
-  // filter by department+employee+search; supervisor is auto-scoped to
-  // their own department server-side but can still filter by employee and
-  // search within it; a plain employee only ever sees their own logs
-  // (backend "else" branch ignores department_id/employee_id/search for
-  // that tier — only year/month apply).
-  const isCompanyWide = level === "system_admin" || level === "payroll_admin";
-  const isDeptScoped  = level === "supervisor";
-  // PUT (editing a log) requires requirePayrollAdmin() — system_admin or
-  // payroll_admin only. Supervisors can view but not edit.
-  const canEdit = isCompanyWide;
+  const companyWide = isPureAdmin(account);
+  const supervisorView = isSupervisor(account);
+  const selfOnly = isEmployee(account) || supervisorView;
+  const canEdit = canEditTimeLogs(account);
   const empId   = account ? account.employee_id : null;
 
-  page.appendChild(pageHeader(
-    isCompanyWide ? "Time Logs" : isDeptScoped ? "Department Time Logs" : "My Time Logs",
-    isCompanyWide ? "All employee attendance records"
-      : isDeptScoped ? "Attendance records for your department"
-      : "Your attendance history"
-  ));
+  const title = companyWide ? "Time Logs"
+    : selfOnly ? "My Time Logs"
+    : "Time Logs";
+  const subtitle = companyWide
+    ? "All employee attendance records — edit logs as needed"
+    : selfOnly
+      ? "Your personal attendance history"
+      : "Your attendance history";
 
-  // ── Filter bar ───────────────────────────────────────
+  page.appendChild(pageHeader(title, subtitle));
+
+  if (companyWide) {
+    page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
+  } else if (selfOnly) {
+    page.appendChild(buildScopeBanner({
+      variant: "personal",
+      title: "Your records only",
+      detail: supervisorView
+        ? "Supervisors clock in here and review their own logs. Use Clocked In Now to monitor your department."
+        : "Only your clock-in and clock-out records are shown.",
+    }));
+  }
+
+  // Filters
   const filterBar = document.createElement("div");
   filterBar.style.cssText = "display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center";
 
-  // db.timeLogs is already department-scoped server-side for a supervisor
-  // (and self-scoped for a plain employee), so only a plain employee needs
-  // an extra client-side filter here.
-  const baseSource = (isCompanyWide || isDeptScoped)
+  const baseSource = companyWide
     ? db.timeLogs
-    : db.timeLogs.filter(l => l.employee_id === empId);
+    : db.timeLogs.filter(l => l.employee_id == empId);
 
-  // Year options — derived from the logs in scope, newest first, plus "All".
+  // Year dropdown from available data
   const nowForYear = new Date();
   const yearsInData = Array.from(new Set(baseSource.map(l => new Date(l.clock_in).getFullYear())));
   if (!yearsInData.includes(nowForYear.getFullYear())) yearsInData.push(nowForYear.getFullYear());
@@ -491,21 +501,16 @@ function renderLogsView(db, account, onDbChange) {
   let selectedEmployee = "all";
   let searchTerm = "";
 
-  if (isCompanyWide || isDeptScoped) {
+  if (companyWide) {
     let deptSel = null;
 
-    if (isCompanyWide) {
-      const deptOptions = [["all", "All Departments"], ...db.departments.map(d => [String(d.department_id), d.department_name])];
-      deptSel = makeSelect(deptOptions, selectedDept);
-      deptSel.style.width = "200px";
-      filterBar.appendChild(deptSel);
-    }
+    const deptOptions = [["all", "All Departments"], ...db.departments.map(d => [String(d.department_id), d.department_name])];
+    deptSel = makeSelect(deptOptions, selectedDept);
+    deptSel.style.width = "200px";
+    filterBar.appendChild(deptSel);
 
-    // Employee dropdown — for company-wide roles, options narrow to
-    // whichever department is selected. For a supervisor, db.employees is
-    // already scoped to their own department, so no extra filtering needed.
     const empOptionsAll = () => {
-      const emps = (isCompanyWide && selectedDept !== "all")
+      const emps = (selectedDept !== "all")
         ? db.employees.filter(e => String(e.department_id) === selectedDept)
         : db.employees;
       return [["all", "All Employees"], ...emps
@@ -518,19 +523,16 @@ function renderLogsView(db, account, onDbChange) {
     empSel.addEventListener("change", () => { selectedEmployee = empSel.value; renderLogsTable(); });
     filterBar.appendChild(empSel);
 
-    if (isCompanyWide) {
-      deptSel.addEventListener("change", () => {
-        selectedDept = deptSel.value;
-        // Reset + rebuild employee options whenever department changes
-        selectedEmployee = "all";
-        const freshEmpSel = makeSelect(empOptionsAll(), selectedEmployee);
-        freshEmpSel.style.width = "200px";
-        freshEmpSel.addEventListener("change", () => { selectedEmployee = freshEmpSel.value; renderLogsTable(); });
-        empSel.replaceWith(freshEmpSel);
-        empSel = freshEmpSel;
-        renderLogsTable();
-      });
-    }
+    deptSel.addEventListener("change", () => {
+      selectedDept = deptSel.value;
+      selectedEmployee = "all";
+      const freshEmpSel = makeSelect(empOptionsAll(), selectedEmployee);
+      freshEmpSel.style.width = "200px";
+      freshEmpSel.addEventListener("change", () => { selectedEmployee = freshEmpSel.value; renderLogsTable(); });
+      empSel.replaceWith(freshEmpSel);
+      empSel = freshEmpSel;
+      renderLogsTable();
+    });
 
     const searchWrap = document.createElement("div");
     searchWrap.style.cssText = "position:relative;flex:1;min-width:200px;max-width:280px";
@@ -550,25 +552,21 @@ function renderLogsView(db, account, onDbChange) {
   monthSel.addEventListener("change", () => { selectedMonth = monthSel.value; renderLogsTable(); });
 
   async function applyFilters() {
-    // Backend filtering — send all active filter values as query params
     const p = new URLSearchParams();
     if (selectedYear  !== "all") p.set('year',        selectedYear);
     if (selectedMonth !== "all") p.set('month',       selectedMonth);
-    if (isCompanyWide && selectedDept !== "all") p.set('department_id', selectedDept);
-    if ((isCompanyWide || isDeptScoped) && selectedEmployee !== "all") p.set('employee_id', selectedEmployee);
-    if ((isCompanyWide || isDeptScoped) && searchTerm)                 p.set('search',       searchTerm);
-    // A plain employee is always scoped to their own logs server-side —
-    // time_logs.php's "else" branch ignores employee_id/search for that tier.
+    if (companyWide && selectedDept !== "all") p.set('department_id', selectedDept);
+    if (companyWide && selectedEmployee !== "all") p.set('employee_id', selectedEmployee);
+    if (companyWide && searchTerm) p.set('search', searchTerm);
     return await apiRequest(`/time_logs.php?${p.toString()}`);
   }
 
-  // Summary stats strip
+  // Stats row
   const statsStrip = document.createElement("div");
   statsStrip.style.cssText = "display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap";
   page.appendChild(filterBar);
   page.appendChild(statsStrip);
 
-  // Table card
   const card = document.createElement("div");
   card.className = "card";
   page.appendChild(card);
@@ -577,9 +575,14 @@ function renderLogsView(db, account, onDbChange) {
     card.innerHTML = "";
     statsStrip.innerHTML = "";
 
-    const filtered = await applyFilters();
+    let filtered;
+    try {
+      filtered = await applyFilters();
+    } catch (err) {
+      card.innerHTML = `<div class="alert-error" style="margin:16px">${err.message || "Could not load time logs."}</div>`;
+      return;
+    }
 
-    // Compute summary stats
     const totalHours = filtered.reduce((s, l) => s + (l.total_hours ? Number(l.total_hours) : 0), 0);
     const presentCount = filtered.filter(l => l.status_label === "Present").length;
     const lateCount    = filtered.filter(l => l.status_label === "Late").length;
@@ -602,8 +605,7 @@ function renderLogsView(db, account, onDbChange) {
       statsStrip.appendChild(pill);
     });
 
-    // Table
-    const showEmployeeCol = isCompanyWide || isDeptScoped;
+    const showEmployeeCol = companyWide;
     const headers = showEmployeeCol
       ? (canEdit
           ? ["Employee", "Date", "Clock In", "Clock Out", "Hours", "Shift", "Status", ""]
@@ -652,12 +654,12 @@ function renderLogsView(db, account, onDbChange) {
   return page;
 }
 
-// ── Admin edit modal ──────────────────────────────────
+// Admin edit modal
 function openEditModal(log, db, onSaved) {
   const shiftOptions  = db.shiftCategories.map(s => [s.shift_category_id, s.category_name]);
   const statusOptions = db.attendanceStatuses.map(s => [s.status_id, s.status_label]);
 
-  // Convert stored datetime to local datetime-local input format
+  // Format for datetime-local input
   function toDatetimeLocal(dtStr) {
     if (!dtStr) return "";
     const d = new Date(dtStr);
@@ -676,7 +678,7 @@ function openEditModal(log, db, onSaved) {
   const shiftSel  = makeSelect(shiftOptions,  log.shift_category_id);
   const statusSel = makeSelect(statusOptions, log.status_id);
 
-  // Live-compute hours preview
+  // Hours preview
   const hoursPreview = document.createElement("div");
   hoursPreview.style.cssText = "font-size:0.82rem;color:var(--text-muted);margin-top:-8px";
 
@@ -743,7 +745,6 @@ function openEditModal(log, db, onSaved) {
       return;
     }
 
-    // Recompute total_hours client-side so the table updates immediately
     const total_hours = outVal
       ? parseFloat(((new Date(outVal) - new Date(inVal)) / 3600000).toFixed(4))
       : null;

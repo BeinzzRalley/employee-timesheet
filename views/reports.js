@@ -123,20 +123,22 @@ function renderReports(db, onDbChange) {
           `<span class="mono text-xs">${r.employee_count}</span>`,
           `<span class="mono text-xs">${r.total_time_logs}</span>`,
           `<span class="mono text-xs font-medium">${Number(r.total_hours_logged).toFixed(2)}h</span>`,
+          `<span class="mono text-xs font-medium">${money(r.labor_cost_allocation)}</span>`,
         ];
       });
 
       tableCard.appendChild(
-        buildTable(["Department", "Code", "Employees", "Time Logs", "Total Hours"], rows,
+        buildTable(["Department", "Code", "Employees", "Time Logs", "Total Hours", "Labor Cost"], rows,
           "No time logs found for the selected filters.")
       );
 
       if (deptRows.length) {
+        const totalCost = deptRows.reduce((s, r) => s + r.labor_cost_allocation, 0);
         const summary = document.createElement("div");
         summary.style.cssText = "padding:12px 18px;border-top:1px solid var(--border,#e5e7eb);font-size:.8rem;display:flex;justify-content:space-between;";
         summary.innerHTML = `
           <span class="text-gray">${deptRows.length} department${deptRows.length !== 1 ? "s" : ""}</span>
-          <span class="font-medium">Total: ${totalLogs} logs · ${totalHours.toFixed(2)}h</span>
+          <span class="font-medium">Total: ${totalLogs} logs · ${totalHours.toFixed(2)}h · ${money(totalCost)}</span>
         `;
         tableCard.appendChild(summary);
       }
@@ -149,19 +151,21 @@ function renderReports(db, onDbChange) {
         `<span class="text-xs text-gray">${r.department_name || "—"}</span>`,
         `<span class="mono text-xs">${r.shifts_logged}</span>`,
         `<span class="mono text-xs font-medium">${Number(r.total_hours_worked).toFixed(2)}h</span>`,
+        `<span class="mono text-xs font-medium">${money(r.total_earnings)}</span>`,
       ]);
 
       tableCard.appendChild(
-        buildTable(["Employee", "Department", "Time Logs", "Total Hours"], rows,
+        buildTable(["Employee", "Department", "Time Logs", "Total Hours", "Earnings"], rows,
           "No time logs found for the selected filters.")
       );
 
       if (empRows.length) {
+        const totalEarnings = empRows.reduce((s, r) => s + r.total_earnings, 0);
         const summary = document.createElement("div");
         summary.style.cssText = "padding:12px 18px;border-top:1px solid var(--border,#e5e7eb);font-size:.8rem;display:flex;justify-content:space-between;";
         summary.innerHTML = `
           <span class="text-gray">${empRows.length} employee${empRows.length !== 1 ? "s" : ""}</span>
-          <span class="font-medium">Total: ${totalLogs} logs · ${totalHours.toFixed(2)}h</span>
+          <span class="font-medium">Total: ${totalLogs} logs · ${totalHours.toFixed(2)}h · ${money(totalEarnings)}</span>
         `;
         tableCard.appendChild(summary);
       }

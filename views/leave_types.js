@@ -1,8 +1,5 @@
 // Leave Types view (system_admin only)
-// Manages the master list of leave types leave applications and leave
-// balances draw from: name, whether it's paid, and the default entitlement
-// (max_days_per_year) used when a balance row is auto-created on first
-// approval.
+// need to add how many leavessss
 
 function renderLeaveTypes(db, onDbChange) {
   const page = document.createElement("div");

@@ -1,4 +1,3 @@
-// Dashboard view
 // Employee - personal clock status, hours, leave counts
 // Supervisor - admin-style dashboard only to their dept
 // System Admin - overview of company

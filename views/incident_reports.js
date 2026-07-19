@@ -2,7 +2,6 @@
 // Employee files a report on a time log then Supervisor/HR/Admin investigates
 
 const REPORT_REASONS = [
-  "Buddy Punching",
   "No Show",
   "Unauthorized Attendance",
   "System Error",
@@ -210,26 +209,23 @@ function renderIncidentReports(db, account, onDbChange) {
   }
 
   function openReportModal() {
-    const eligibleLogs = validatorView
-      ? db.timeLogs
-      : db.timeLogs.filter(l => account.employee_id != null && l.employee_id == account.employee_id);
+    // You're reporting an incident about someone else's attendance — never your own.
+    const reportableEmps = db.employees.filter(e => e.employee_id !== account.employee_id);
 
     const body = document.createElement("div");
     body.style.cssText = "display:flex;flex-direction:column;gap:14px";
 
-    const logOptions = eligibleLogs.map(l => [
-      l.log_id,
-      `${l.full_name ? l.full_name + " — " : ""}${fmtDate(l.work_date || l.clock_in)}`,
-    ]);
-
-    const fLog = makeSelect(logOptions, (logOptions[0] && logOptions[0][0]) || "");
+    const empOptions = reportableEmps.map(e => [e.employee_id, employeeName(e)]);
+    const fEmp = makeSelect(empOptions, (empOptions[0] && empOptions[0][0]) || "");
+    const fDate = makeInput("date", "");
     const fReason = makeSelect(REPORT_REASONS.map(r => [r, r]), REPORT_REASONS[0]);
     const fDesc = document.createElement("textarea");
     fDesc.className = "input";
     fDesc.rows = 4;
     fDesc.placeholder = "Describe what happened…";
 
-    body.appendChild(buildField("Time Log", fLog));
+    body.appendChild(buildField("Employee", fEmp));
+    body.appendChild(buildField("Date", fDate));
     body.appendChild(buildField("Reason", fReason));
     body.appendChild(buildField("Description", fDesc));
 
@@ -254,8 +250,13 @@ function renderIncidentReports(db, account, onDbChange) {
     cancelBtn.addEventListener("click", close);
 
     saveBtn.addEventListener("click", async () => {
-      if (!fLog.value) {
-        errEl.textContent = "Select a time log.";
+      if (!fEmp.value) {
+        errEl.textContent = "Select an employee.";
+        errEl.style.display = "block";
+        return;
+      }
+      if (!fDate.value) {
+        errEl.textContent = "Select a date.";
         errEl.style.display = "block";
         return;
       }
@@ -270,7 +271,8 @@ function renderIncidentReports(db, account, onDbChange) {
 
       try {
         await createIncidentReportRequest({
-          log_id: Number(fLog.value),
+          employee_id: Number(fEmp.value),
+          work_date: fDate.value,
           report_reason: fReason.value,
           description: fDesc.value.trim(),
         });

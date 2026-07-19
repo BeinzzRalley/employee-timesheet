@@ -145,7 +145,6 @@ function buildAdminDetailGrid(stats, account) {
           <span class="pending-item-name">${r.full_name || "Unknown"}</span>
           <span style="font-size:0.72rem;color:${isLate ? "#f97316" : "#16a34a"};font-weight:600;margin-left:auto">${r.status_label || ""}</span>
         </div>
-        <div class="pending-type">${r.category_name || "—"}</div>
         <div class="pending-dates">
           ${fmtTime(r.clock_in)}${r.clock_out ? ` → ${fmtTime(r.clock_out)}` : " <span style='color:#6366f1'>(active)</span>"}
           ${r.total_hours != null ? ` · ${Number(r.total_hours).toFixed(1)}h` : ""}

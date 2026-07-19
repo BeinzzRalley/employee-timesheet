@@ -42,14 +42,6 @@ function renderEmployees(db, account, onDbChange) {
       addBtn
     ));
 
-    if (supervisorView) {
-      const scope = scopeBannerProps(db, account);
-      if (scope) page.appendChild(buildScopeBanner(scope));
-    } else if (isPureAdmin(account)) {
-      const scope = scopeBannerProps(db, account);
-      if (scope) page.appendChild(buildScopeBanner(scope));
-    }
-
     const card = document.createElement("div");
     card.className = "card";
 

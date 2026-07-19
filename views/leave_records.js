@@ -52,19 +52,6 @@ function renderLeaveRecords(db, account, onDbChange) {
       actionEl.children.length ? actionEl : null
     ));
 
-    if (supervisorView) {
-      const scope = scopeBannerProps(db, account);
-      if (scope) page.appendChild(buildScopeBanner(scope));
-    } else if (fullAdmin) {
-      page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
-    } else if (employeeView) {
-      page.appendChild(buildScopeBanner({
-        variant: "personal",
-        title: "Your leave requests",
-        detail: "You can file new leave, edit pending requests, and cancel before approval.",
-      }));
-    }
-
     // Filters card
     const card = document.createElement("div");
     card.className = "card";
@@ -84,7 +71,7 @@ function renderLeaveRecords(db, account, onDbChange) {
 
     // Status filter
     const statusFilter = makeSelect(
-      [["", "All Statuses"], ["Pending", "Pending"], ["Approved", "Approved"], ["Rejected", "Rejected"]],
+      [["", "All Statuses"], ["Pending", "Pending"], ["Supervisor Recommended", "Supervisor Recommended"], ["Approved", "Approved"], ["Rejected", "Rejected"]],
       filterStatus
     );
     statusFilter.addEventListener("change", e => {
@@ -123,15 +110,25 @@ function renderLeaveRecords(db, account, onDbChange) {
         viewBtn.addEventListener("click", () => openLeaveDetailsModal(l));
         actions.appendChild(viewBtn);
 
-        // Approve/Rejects
-        const isOwnAsSupervisor = account.access_level === "supervisor" && l.employee_id === account.employee_id;
-        if (l.leave_status === "Pending" && !isOwnAsSupervisor) {
-          const approveBtn = document.createElement("button");
-          approveBtn.className = "btn btn-ghost btn-sm";
-          approveBtn.style.color = "var(--emerald, #10b981)";
-          approveBtn.textContent = "Approve";
-          approveBtn.addEventListener("click", () => updateStatus(l, "Approved"));
-          actions.appendChild(approveBtn);
+        // Approve/Reject — two-tier: Supervisor recommends, HR/Admin final approves
+        const isOwnAsSupervisor = isSupervisor(account) && l.employee_id === account.employee_id;
+        const canActOnLeave = !isOwnAsSupervisor && (l.leave_status === "Pending" || l.leave_status === "Supervisor Recommended");
+        if (canActOnLeave) {
+          if (isSupervisor(account) && l.leave_status === "Pending") {
+            const recBtn = document.createElement("button");
+            recBtn.className = "btn btn-ghost btn-sm";
+            recBtn.style.color = "var(--emerald, #10b981)";
+            recBtn.textContent = "Recommend";
+            recBtn.addEventListener("click", () => updateStatus(l, "Supervisor Recommended"));
+            actions.appendChild(recBtn);
+          } else if (!isSupervisor(account)) {
+            const approveBtn = document.createElement("button");
+            approveBtn.className = "btn btn-ghost btn-sm";
+            approveBtn.style.color = "var(--emerald, #10b981)";
+            approveBtn.textContent = "Approve";
+            approveBtn.addEventListener("click", () => updateStatus(l, "Approved"));
+            actions.appendChild(approveBtn);
+          }
 
           const rejectBtn = document.createElement("button");
           rejectBtn.className = "btn btn-ghost btn-sm";
@@ -322,7 +319,9 @@ function renderLeaveRecords(db, account, onDbChange) {
     closeBtn.textContent = "Close";
     footer.appendChild(closeBtn);
 
-    if (leave.leave_status === "Pending") {
+    const isOwnSupervisorLeave = isSupervisor(account) && leave.employee_id === account.employee_id;
+    const canActModal = !isOwnSupervisorLeave && (leave.leave_status === "Pending" || leave.leave_status === "Supervisor Recommended");
+    if (canActModal) {
       const rejectBtn = document.createElement("button");
       rejectBtn.className = "btn btn-ghost";
       rejectBtn.style.color = "var(--red, #ef4444)";
@@ -330,11 +329,19 @@ function renderLeaveRecords(db, account, onDbChange) {
       rejectBtn.addEventListener("click", async () => { await updateStatus(leave, "Rejected"); close(); });
       footer.appendChild(rejectBtn);
 
-      const approveBtn = document.createElement("button");
-      approveBtn.className = "btn btn-primary";
-      approveBtn.innerHTML = `${icons.check} Approve`;
-      approveBtn.addEventListener("click", async () => { await updateStatus(leave, "Approved"); close(); });
-      footer.appendChild(approveBtn);
+      if (isSupervisor(account) && leave.leave_status === "Pending") {
+        const recBtn = document.createElement("button");
+        recBtn.className = "btn btn-primary";
+        recBtn.innerHTML = `${icons.check} Recommend`;
+        recBtn.addEventListener("click", async () => { await updateStatus(leave, "Supervisor Recommended"); close(); });
+        footer.appendChild(recBtn);
+      } else if (!isSupervisor(account)) {
+        const approveBtn = document.createElement("button");
+        approveBtn.className = "btn btn-primary";
+        approveBtn.innerHTML = `${icons.check} Approve`;
+        approveBtn.addEventListener("click", async () => { await updateStatus(leave, "Approved"); close(); });
+        footer.appendChild(approveBtn);
+      }
     }
 
     body.appendChild(footer);

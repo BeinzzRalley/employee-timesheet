@@ -52,7 +52,6 @@ const SYSTEM_ADMIN_NAV = [
       { id: "employment_types",    label: "Employment Types",    icon: icons.briefcase },
       { id: "holidays",            label: "Holidays",            icon: icons.fileText  },
       { id: "overtime_categories", label: "Overtime Categories", icon: icons.shift     },
-      { id: "pay_differentials",   label: "Pay Differentials",   icon: icons.pay       },
       { id: "validation_status",   label: "Validation Status",   icon: icons.check     },
     ],
   },

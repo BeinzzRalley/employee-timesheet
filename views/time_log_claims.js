@@ -50,19 +50,6 @@ function renderTimeLogClaims(db, account, onDbChange) {
       actionEl.children.length ? actionEl : null
     ));
 
-    if (supervisorView) {
-      const scope = scopeBannerProps(db, account);
-      if (scope) page.appendChild(buildScopeBanner(scope));
-    } else if (fullAdmin) {
-      page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
-    } else if (employeeView) {
-      page.appendChild(buildScopeBanner({
-        variant: "personal",
-        title: "Your claims only",
-        detail: "Claims are filed against your own time logs and reviewed by a supervisor.",
-      }));
-    }
-
     const card = document.createElement("div");
     card.className = "card";
 
@@ -70,7 +57,7 @@ function renderTimeLogClaims(db, account, onDbChange) {
     toolbar.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px";
 
     const statusFilter = makeSelect(
-      [["", "All Statuses"], ["Pending", "Pending"], ["Approved", "Approved"], ["Rejected", "Rejected"]],
+      [["", "All Statuses"], ["Pending", "Pending"], ["Approved", "Approved"], ["Rejected", "Rejected"], ["Supervisor Approved", "Supervisor Approved"]],
       filterStatus
     );
     statusFilter.addEventListener("change", e => {
@@ -92,6 +79,7 @@ function renderTimeLogClaims(db, account, onDbChange) {
     if (filterStatus === "Pending")  params.set("validation_status_id", "1");
     if (filterStatus === "Approved") params.set("validation_status_id", "2");
     if (filterStatus === "Rejected") params.set("validation_status_id", "3");
+    if (filterStatus === "Supervisor Approved") params.set("validation_status_id", "4");
 
     let claims;
     try {
@@ -102,8 +90,8 @@ function renderTimeLogClaims(db, account, onDbChange) {
     }
 
     const headers = approverView
-      ? ["Employee", "Work Date", "OT Hours", "Holiday Hrs", "Category", "Status", "Remarks", ""]
-      : ["Work Date", "OT Hours", "Holiday Hrs", "Category", "Status", "Remarks", ""];
+      ? ["Employee", "Work Date", "OT Hours", "Holiday Hrs", "Category", "Correction", "Status", "Remarks", ""]
+      : ["Work Date", "OT Hours", "Holiday Hrs", "Category", "Correction", "Status", "Remarks", ""];
 
     const rows = claims.map(c => {
       const actions = document.createElement("div");
@@ -118,13 +106,25 @@ function renderTimeLogClaims(db, account, onDbChange) {
         actions.appendChild(viewBtn);
 
         const isOwn = account.employee_id != null && c.employee_id === account.employee_id;
-        if (c.validation_status === "Pending" && !isOwn) {
-          const approveBtn = document.createElement("button");
-          approveBtn.className = "btn btn-ghost btn-sm";
-          approveBtn.style.color = "var(--emerald, #10b981)";
-          approveBtn.textContent = "Approve";
-          approveBtn.addEventListener("click", () => resolveClaim(c, 2));
-          actions.appendChild(approveBtn);
+        const canAct = (c.validation_status === "Pending" || c.validation_status === "Supervisor Approved") && !isOwn;
+        if (canAct) {
+          if (isSupervisor(account) && c.validation_status === "Pending") {
+            // Supervisors recommend (→4), not final approve
+            const recBtn = document.createElement("button");
+            recBtn.className = "btn btn-ghost btn-sm";
+            recBtn.style.color = "var(--emerald, #10b981)";
+            recBtn.textContent = "Recommend";
+            recBtn.addEventListener("click", () => resolveClaim(c, 4));
+            actions.appendChild(recBtn);
+          } else if (!isSupervisor(account)) {
+            // HR/Admin can final approve
+            const approveBtn = document.createElement("button");
+            approveBtn.className = "btn btn-ghost btn-sm";
+            approveBtn.style.color = "var(--emerald, #10b981)";
+            approveBtn.textContent = "Approve";
+            approveBtn.addEventListener("click", () => resolveClaim(c, 2));
+            actions.appendChild(approveBtn);
+          }
 
           const rejectBtn = document.createElement("button");
           rejectBtn.className = "btn btn-ghost btn-sm";
@@ -153,6 +153,7 @@ function renderTimeLogClaims(db, account, onDbChange) {
         `<span class="mono text-xs">${c.overtime_hours != null ? Number(c.overtime_hours).toFixed(2) + "h" : "—"}</span>`,
         `<span class="mono text-xs">${c.holiday_hours != null ? Number(c.holiday_hours).toFixed(2) + "h" : "—"}</span>`,
         `<span class="text-xs">${c.overtime_category_name || c.holiday_name || "—"}</span>`,
+        buildCorrectionIndicator(c),
         badge(c.validation_status || "Pending"),
         `<span class="text-xs text-gray">${c.remarks || "—"}</span>`,
         actions,
@@ -209,7 +210,7 @@ function renderTimeLogClaims(db, account, onDbChange) {
     body.style.gridTemplateColumns = "1fr 1fr";
     body.style.gap = "12px";
 
-    [
+    const fields = [
       ["Employee", claim.employee_name || "—"],
       ["Work Date", fmtDate(claim.work_date)],
       ["Clock In", fmtTime(claim.clock_in)],
@@ -219,9 +220,25 @@ function renderTimeLogClaims(db, account, onDbChange) {
       ["Holiday Hours", claim.holiday_hours != null ? Number(claim.holiday_hours).toFixed(2) + "h" : "—"],
       ["Category", claim.overtime_category_name || "—"],
       ["Holiday", claim.holiday_name || "—"],
+    ];
+
+    // Add time correction fields if present
+    if (claim.requested_clock_in) {
+      fields.push(["Corrected Clock In", fmtTime(claim.requested_clock_in)]);
+    }
+    if (claim.requested_clock_out) {
+      fields.push(["Corrected Clock Out", fmtTime(claim.requested_clock_out)]);
+    }
+    if (claim.requested_hours != null) {
+      fields.push(["Missing Hours", Number(claim.requested_hours).toFixed(2) + "h"]);
+    }
+
+    fields.push(
       ["Status", badge(claim.validation_status || "Pending")],
       ["Filed By", claim.claimed_by_username || "—"],
-    ].forEach(([label, value]) => {
+    );
+
+    fields.forEach(([label, value]) => {
       const item = document.createElement("div");
       item.innerHTML = `<div class="detail-item-label">${label}</div><div class="detail-item-value">${value}</div>`;
       body.appendChild(item);
@@ -276,13 +293,52 @@ function renderTimeLogClaims(db, account, onDbChange) {
     fHolHrs.min  = "0";
     const fRemarks = makeInput("text", isEdit ? (existing.remarks || "") : "", "Justification…");
 
+    // Time correction / missing hours fields
+    function toDatetimeLocal(dtStr) {
+      if (!dtStr) return "";
+      const d = new Date(dtStr);
+      const pad = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    const fReqClockIn  = makeInput("datetime-local", isEdit ? toDatetimeLocal(existing.requested_clock_in) : "");
+    const fReqClockOut = makeInput("datetime-local", isEdit ? toDatetimeLocal(existing.requested_clock_out) : "");
+    const fReqHours    = makeInput("number", isEdit ? (existing.requested_hours ?? "") : "");
+    fReqHours.step = "0.25";
+    fReqHours.min  = "0";
+
     if (!isEdit) {
       body.appendChild(buildField("Time Log", fLog));
     }
-    body.appendChild(buildField("Overtime Category", fOtCat));
-    body.appendChild(buildField("Overtime Hours", fOtHrs));
-    body.appendChild(buildField("Holiday", fHol));
-    body.appendChild(buildField("Holiday Hours", fHolHrs));
+
+    // OT / Holiday section
+    const otSection = document.createElement("div");
+    otSection.style.cssText = "border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px";
+    const otHeader = document.createElement("div");
+    otHeader.style.cssText = "font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)";
+    otHeader.textContent = "Overtime / Holiday";
+    otSection.appendChild(otHeader);
+    otSection.appendChild(buildField("Overtime Category", fOtCat));
+    otSection.appendChild(buildField("Overtime Hours", fOtHrs));
+    otSection.appendChild(buildField("Holiday", fHol));
+    otSection.appendChild(buildField("Holiday Hours", fHolHrs));
+    body.appendChild(otSection);
+
+    // Time Correction / Missing Hours section
+    const corrSection = document.createElement("div");
+    corrSection.style.cssText = "border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px";
+    const corrHeader = document.createElement("div");
+    corrHeader.style.cssText = "font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)";
+    corrHeader.textContent = "Time Correction / Missing Hours";
+    corrSection.appendChild(corrHeader);
+    const corrNote = document.createElement("div");
+    corrNote.style.cssText = "font-size:0.75rem;color:var(--text-muted);margin-top:-6px";
+    corrNote.textContent = "Request a clock-in/out correction or add missing hours. Auto-applied on approval.";
+    corrSection.appendChild(corrNote);
+    corrSection.appendChild(buildField("Corrected Clock In", fReqClockIn));
+    corrSection.appendChild(buildField("Corrected Clock Out", fReqClockOut));
+    corrSection.appendChild(buildField("Missing Hours", fReqHours));
+    body.appendChild(corrSection);
+
     body.appendChild(buildField("Remarks", fRemarks));
 
     const errEl = document.createElement("div");
@@ -303,7 +359,7 @@ function renderTimeLogClaims(db, account, onDbChange) {
     body.appendChild(footer);
 
     const { close } = openModal({
-      title: isEdit ? "Edit Claim" : "File OT / Holiday Claim",
+      title: isEdit ? "Edit Claim" : "File OT / Holiday / Correction Claim",
       body,
       wide: true,
     });
@@ -313,9 +369,16 @@ function renderTimeLogClaims(db, account, onDbChange) {
     saveBtn.addEventListener("click", async () => {
       const otHrs  = fOtHrs.value !== "" ? parseFloat(fOtHrs.value) : null;
       const holHrs = fHolHrs.value !== "" ? parseFloat(fHolHrs.value) : null;
+      const reqClockIn  = fReqClockIn.value || null;
+      const reqClockOut = fReqClockOut.value || null;
+      const reqHrs = fReqHours.value !== "" ? parseFloat(fReqHours.value) : null;
 
-      if ((!otHrs || otHrs <= 0) && (!holHrs || holHrs <= 0)) {
-        errEl.textContent = "Enter overtime hours and/or holiday hours.";
+      const hasOt   = otHrs && otHrs > 0;
+      const hasHol  = holHrs && holHrs > 0;
+      const hasCorr = reqClockIn || reqClockOut || (reqHrs && reqHrs > 0);
+
+      if (!hasOt && !hasHol && !hasCorr) {
+        errEl.textContent = "Enter at least one: overtime hours, holiday hours, or time correction.";
         errEl.style.display = "block";
         return;
       }
@@ -325,6 +388,9 @@ function renderTimeLogClaims(db, account, onDbChange) {
         holiday_id:           fHol.value ? Number(fHol.value) : null,
         overtime_hours:       otHrs,
         holiday_hours:        holHrs,
+        requested_clock_in:   reqClockIn,
+        requested_clock_out:  reqClockOut,
+        requested_hours:      reqHrs,
         remarks:              fRemarks.value.trim() || null,
       };
 
@@ -359,6 +425,19 @@ function renderTimeLogClaims(db, account, onDbChange) {
         saveBtn.disabled = false;
       }
     });
+  }
+
+  // Helper to build a correction indicator for the table
+  function buildCorrectionIndicator(c) {
+    const parts = [];
+    if (c.requested_clock_in)  parts.push("⏰ In");
+    if (c.requested_clock_out) parts.push("⏰ Out");
+    if (c.requested_hours != null) parts.push(`+${Number(c.requested_hours).toFixed(1)}h`);
+    if (!parts.length) return `<span class="text-xs text-gray">—</span>`;
+    const el = document.createElement("span");
+    el.style.cssText = "font-size:0.72rem;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-weight:500;white-space:nowrap";
+    el.textContent = parts.join(" ");
+    return el;
   }
 
   render();

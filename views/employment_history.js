@@ -70,7 +70,8 @@ function renderEmploymentHistory(db, account, onDbChange) {
     // Employee Filter dropdown
     let visibleEmployees = db.employees || [];
     if (isSupervisor) {
-      const deptId = currentDepartmentId();
+      const supEmp = linkedEmployee(db, account);
+      const deptId = supEmp ? supEmp.department_id : null;
       visibleEmployees = visibleEmployees.filter(e => e.department_id === deptId);
     }
     const empOpts = [["", "All Employees"], ...visibleEmployees.map(e => [e.employee_id, `${e.first_name} ${e.last_name}`])];

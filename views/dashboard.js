@@ -272,32 +272,13 @@ function buildEmployeeDashboard(db, account, stats, emp) {
         <div class="stat-value amber">${stats.pending_leaves}</div>
         <div class="stat-sub">awaiting approval</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Approved This Month</div>
-        <div class="stat-value emerald">${stats.approved_leaves_this_month}</div>
-        <div class="stat-sub">leave day(s)</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Pending Claims</div>
-        <div class="stat-value amber">${stats.pending_claims ?? 0}</div>
-        <div class="stat-sub">OT / holiday claims</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Pending Reports</div>
-        <div class="stat-value amber">${stats.pending_reports ?? 0}</div>
-        <div class="stat-sub">attendance reports filed</div>
-      </div>
       ${emp ? `
       <div class="stat-card">
         <div class="stat-label">Work Schedule</div>
         <div class="stat-value indigo">${stats.assigned_schedule ? stats.assigned_schedule.schedule_name : "Unassigned"}</div>
         <div class="stat-sub">${emp.role_name || "—"}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Employment Status</div>
-        <div class="stat-value sky">${emp.employment_status}</div>
-        <div class="stat-sub">${emp.department_name || "No department"}</div>
-      </div>` : ""}
+      ` : ""}
     `;
   } else {
     const myLeaves  = db.leaveRecords.filter(l => l.employee_id === account.employee_id);

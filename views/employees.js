@@ -231,6 +231,30 @@ function renderEmployees(db, account, onDbChange) {
 
     body.appendChild(formGrid);
 
+     // Only relevant when moving an Active employee to any other status —
+    // matches the backend's Active -> non-Active exit check.
+    const wasActive = isEdit && data.employment_status === "Active";
+    const fReason = makeInput("text", "", "e.g. Resigned to pursue further studies");
+    const fieldReason = buildField("Exit Reason", fReason);
+    fieldReason.style.display = "none";
+
+    const fVoluntary = document.createElement("input");
+    fVoluntary.type = "checkbox";
+    fVoluntary.checked = true;
+    const voluntaryLabel = document.createElement("label");
+    voluntaryLabel.style.cssText = "display:flex;align-items:center;gap:6px;font-size:0.78rem;margin-top:8px;color:var(--text-muted)";
+    voluntaryLabel.appendChild(fVoluntary);
+    voluntaryLabel.append(" Voluntary exit");
+    fieldReason.appendChild(voluntaryLabel);
+
+    body.insertBefore(fieldReason, errEl);
+
+    fStatus.addEventListener("change", () => {
+      const showReason = wasActive && fStatus.value != defaultStatusId;
+      fieldReason.style.display = showReason ? "" : "none";
+    });
+
+
     const errEl = document.createElement("div");
     errEl.className = "alert-error";
     errEl.style.display = "none";
@@ -282,6 +306,17 @@ function renderEmployees(db, account, onDbChange) {
         schedule_id:          Number(fSched.value) || null,
       };
 
+       if (fieldReason.style.display !== "none") {
+        const reason = fReason.value.trim();
+        if (!reason) {
+          errEl.textContent = "Exit Reason is required when changing status away from Active.";
+          errEl.style.display = "block";
+          return;
+        }
+        payload.exit_reason  = reason;
+        payload.is_voluntary = fVoluntary.checked ? 1 : 0;
+      }
+
       errEl.style.display = "none";
       saveBtn.disabled = true;
 
@@ -327,6 +362,17 @@ function renderEmployees(db, account, onDbChange) {
       : `Are you sure you want to reactivate ${name}? Their status will be set to Active.`;
     body.appendChild(message);
 
+    let fReason = null;
+    if (isActive) {
+      fReason = makeInput("text", "", "e.g. Resigned to pursue further studies");
+      body.appendChild(buildField("Exit Reason", fReason));
+    }
+
+    const errEl = document.createElement("div");
+    errEl.className = "alert-error";
+    errEl.style.display = "none";
+    body.appendChild(errEl);
+
     const footer = document.createElement("div");
     footer.className = "modal-footer";
 
@@ -350,11 +396,20 @@ function renderEmployees(db, account, onDbChange) {
     keepBtn.addEventListener("click", close);
 
     confirmBtn.addEventListener("click", async () => {
+       if (isActive) {
+        const reason = fReason.value.trim();
+        if (!reason) {
+          errEl.textContent = "Exit Reason is required.";
+          errEl.style.display = "block";
+          return;
+        }
+      }
       confirmBtn.disabled = true;
       try {
         await updateEmployeeRequest(emp.employee_id, {
           ...emp,
           employment_status_id: newStatusId,
+          ...(isActive ? { exit_reason: fReason.value.trim(), is_voluntary: 1 } : {}),
         });
         db.employees = await apiRequest("/employees.php");
         onDbChange(db);

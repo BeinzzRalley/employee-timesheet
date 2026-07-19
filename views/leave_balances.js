@@ -2,7 +2,7 @@ function renderLeaveBalances(db, account, onDbChange) {
   const page = document.createElement("div");
   page.className = "page";
 
-  const isPrivileged = account && ["system_admin", "payroll_admin"].includes(account.access_level);
+  const isPrivileged = account && ["system_admin", "human_resources"].includes(account.access_level);
   const isSupervisor = account && account.access_level === "supervisor";
 
   let searchVal = "";

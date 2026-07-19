@@ -66,7 +66,7 @@ const SYSTEM_ADMIN_NAV = [
   },
 ];
 
-const PAYROLL_ADMIN_NAV = [
+const HUMAN_RESOURCES_NAV = [
   SYSTEM_ADMIN_NAV[0],
   SYSTEM_ADMIN_NAV[1],
   SYSTEM_ADMIN_NAV[2],
@@ -103,9 +103,9 @@ function flattenNavSections(sections) {
 
 function navSectionsForAccount(acc) {
   switch (accessLevel(acc)) {
-    case ACCESS.SYSTEM_ADMIN:  return SYSTEM_ADMIN_NAV;
-    case ACCESS.PAYROLL_ADMIN: return PAYROLL_ADMIN_NAV;
-    default:                   return null;
+    case ACCESS.SYSTEM_ADMIN:    return SYSTEM_ADMIN_NAV;
+    case ACCESS.HUMAN_RESOURCES: return HUMAN_RESOURCES_NAV;
+    default:                     return null;
   }
 }
 

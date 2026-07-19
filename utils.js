@@ -100,10 +100,10 @@ function avatarHTML(name, size = "sm") {
 
 // ── Role label helper ────────────────────────────────
 const ROLE_LABELS = {
-  system_admin:  "System Admin",
-  payroll_admin: "Payroll Admin",
-  supervisor:    "Supervisor",
-  employee:      "Employee",
+  system_admin:    "System Admin",
+  human_resources: "Human Resources",
+  supervisor:      "Supervisor",
+  employee:        "Employee",
 };
 
 function roleLabel(level) {

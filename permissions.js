@@ -1,10 +1,10 @@
 // Role & permissions/access level
 
 const ACCESS = {
-  SYSTEM_ADMIN:  "system_admin",
-  PAYROLL_ADMIN: "payroll_admin",
-  SUPERVISOR:    "supervisor",
-  EMPLOYEE:      "employee",
+  SYSTEM_ADMIN:    "system_admin",
+  HUMAN_RESOURCES: "human_resources",
+  SUPERVISOR:      "supervisor",
+  EMPLOYEE:        "employee",
 };
 
 function accessLevel(account) {
@@ -15,8 +15,8 @@ function isSystemAdmin(account) {
   return accessLevel(account) === ACCESS.SYSTEM_ADMIN;
 }
 
-function isPayrollAdmin(account) {
-  return accessLevel(account) === ACCESS.PAYROLL_ADMIN;
+function isHumanResources(account) {
+  return accessLevel(account) === ACCESS.HUMAN_RESOURCES;
 }
 
 function isSupervisor(account) {
@@ -27,10 +27,10 @@ function isEmployee(account) {
   return accessLevel(account) === ACCESS.EMPLOYEE;
 }
 
-/** system_admin or payroll_admin — no clock-in, full admin tooling */
+/** system_admin or human_resources — no clock-in, full admin tooling */
 function isPureAdmin(account) {
   const l = accessLevel(account);
-  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN;
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES;
 }
 
 /** Config pages (shift categories, holidays, etc.) */
@@ -41,13 +41,13 @@ function isAdminConfig(account) {
 /** Dashboard with workforce overview (dept-scoped for supervisor) */
 function isWorkforceDashboard(account) {
   const l = accessLevel(account);
-  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES || l === ACCESS.SUPERVISOR;
 }
 
 /** Can view leave list beyond own records and approve/reject */
 function isLeaveApprover(account) {
   const l = accessLevel(account);
-  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES || l === ACCESS.SUPERVISOR;
 }
 
 function isLeaveFullAdmin(account) {
@@ -55,10 +55,10 @@ function isLeaveFullAdmin(account) {
 }
 
 // Incident reports
-/** Can confirm/dismiss attendance incident reports — PUT → requireRole([supervisor, payroll_admin, system_admin]) */
+/** Can confirm/dismiss attendance incident reports — PUT → requireRole([supervisor, human_resources, system_admin]) */
 function isReportValidator(account) {
   const l = accessLevel(account);
-  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES || l === ACCESS.SUPERVISOR;
 }
 
 function linkedEmployee(db, account) {
@@ -66,6 +66,7 @@ function linkedEmployee(db, account) {
   return db.employees.find(e => e.employee_id == account.employee_id) || null;
 }
 
+// Department name
 function departmentName(db, account) {
   const emp = linkedEmployee(db, account);
   return emp ? (emp.department_name || null) : null;
@@ -73,16 +74,17 @@ function departmentName(db, account) {
 
 // Employee CRUD
 function canCreateEmployee(account) {
-  return isSystemAdmin(account) || isPayrollAdmin(account);
+  return isSystemAdmin(account) || isHumanResources(account);
 }
 
+// Employee Edit
 function canEditEmployee(account) {
-  return isSystemAdmin(account) || isPayrollAdmin(account);
+  return isSystemAdmin(account) || isHumanResources(account);
 }
 
 function canViewEmployees(account) {
   const l = accessLevel(account);
-  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES || l === ACCESS.SUPERVISOR;
 }
 
 // Time logs
@@ -96,7 +98,7 @@ function canClockIn(account) {
 
 function canViewClockedInNow(account) {
   const l = accessLevel(account);
-  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES || l === ACCESS.SUPERVISOR;
 }
 
 // Scope banner
@@ -115,7 +117,7 @@ function scopeBannerProps(db, account) {
       title: "Company-wide access",
       detail: isSystemAdmin(account)
         ? "Full system access — all departments and configuration."
-        : "Payroll administration — all departments. Some system settings require System Admin.",
+        : "Human resources administration — all departments. Some system settings require System Admin.",
     };
   }
   return null;

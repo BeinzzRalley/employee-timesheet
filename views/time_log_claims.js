@@ -2,7 +2,7 @@
 
 function isClaimApprover(account) {
   const l = accessLevel(account);
-  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.PAYROLL_ADMIN || l === ACCESS.SUPERVISOR;
+  return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES || l === ACCESS.SUPERVISOR;
 }
 
 function renderTimeLogClaims(db, account, onDbChange) {

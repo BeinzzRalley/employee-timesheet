@@ -16,7 +16,6 @@ function renderIncidentReports(db, account, onDbChange) {
 
   const validatorView = isReportValidator(account);
   const supervisorView = isSupervisor(account);
-  const fullAdmin = isPureAdmin(account);
 
   let filterStatus = "";
 
@@ -51,19 +50,6 @@ function renderIncidentReports(db, account, onDbChange) {
         : "Report attendance incidents such as buddy punching or a no-show",
       actionEl
     ));
-
-    if (supervisorView) {
-      const scope = scopeBannerProps(db, account);
-      if (scope) page.appendChild(buildScopeBanner(scope));
-    } else if (fullAdmin) {
-      page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
-    } else {
-      page.appendChild(buildScopeBanner({
-        variant: "personal",
-        title: "Reports you filed",
-        detail: "You can file a report against any time log. A supervisor, HR, or admin will investigate and confirm or dismiss it.",
-      }));
-    }
 
     const card = document.createElement("div");
     card.className = "card";

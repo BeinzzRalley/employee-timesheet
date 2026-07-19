@@ -19,11 +19,6 @@ function renderClockInOut(db, account, onDbChange) {
 
   if (isPureAdmin(account)) {
     page.appendChild(pageHeader("Time Logs", "Admin accounts do not clock in"));
-    page.appendChild(buildScopeBanner({
-      variant: "company",
-      title: "Admin role — no clock-in",
-      detail: "Payroll and System Admins manage attendance via Time Logs. Use that page to view and edit all employee records.",
-    }));
     const info = document.createElement("div");
     info.className = "card";
     info.style.padding = "32px";
@@ -319,16 +314,6 @@ function renderClockedInNowView(db, account, onDbChange) {
       : "Employees who are clocked in right now, today"
   ));
 
-  if (supervisorView) {
-    const scope = scopeBannerProps(db, account);
-    if (scope) page.appendChild(buildScopeBanner({
-      ...scope,
-      detail: "List is limited to your department. The department filter only narrows within that scope.",
-    }));
-  } else if (isPureAdmin(account)) {
-    page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
-  }
-
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
 
@@ -488,18 +473,6 @@ function renderLogsView(db, account, onDbChange) {
       : "Your attendance history";
 
   page.appendChild(pageHeader(title, subtitle));
-
-  if (companyWide) {
-    page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
-  } else if (selfOnly) {
-    page.appendChild(buildScopeBanner({
-      variant: "personal",
-      title: "Your records only",
-      detail: supervisorView
-        ? "Supervisors clock in here and review their own logs. Use Clocked In Now to monitor your department."
-        : "Only your clock-in and clock-out records are shown.",
-    }));
-  }
 
   // Filters
   const filterBar = document.createElement("div");

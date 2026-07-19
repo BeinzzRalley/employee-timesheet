@@ -100,25 +100,3 @@ function canViewClockedInNow(account) {
   const l = accessLevel(account);
   return l === ACCESS.SYSTEM_ADMIN || l === ACCESS.HUMAN_RESOURCES || l === ACCESS.SUPERVISOR;
 }
-
-// Scope banner
-function scopeBannerProps(db, account) {
-  if (isSupervisor(account)) {
-    const dept = departmentName(db, account);
-    return {
-      variant: "dept",
-      title: dept ? `${dept} — Department scope` : "Department scope",
-      detail: "You only see data for your assigned department. Actions outside this scope are blocked on the server.",
-    };
-  }
-  if (isPureAdmin(account)) {
-    return {
-      variant: "company",
-      title: "Company-wide access",
-      detail: isSystemAdmin(account)
-        ? "Full system access — all departments and configuration."
-        : "Human resources administration — all departments. Some system settings require System Admin.",
-    };
-  }
-  return null;
-}

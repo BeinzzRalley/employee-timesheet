@@ -15,9 +15,6 @@ function renderDashboard(db, account) {
 
     page.appendChild(pageHeader("Dashboard", subtitle));
 
-    const scope = scopeBannerProps(db, account);
-    if (scope) page.appendChild(buildScopeBanner(scope));
-
     const stats = db.dashboardStats;
     if (stats && stats.headcount) {
       page.appendChild(buildAdminStatGrid(stats, account));

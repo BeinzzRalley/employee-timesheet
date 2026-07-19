@@ -74,22 +74,6 @@ function buildTable(headers, rows, emptyMsg = "No records found") {
   return wrap;
 }
 
-// Scope banner
-
-function buildScopeBanner({ variant, title, detail }) {
-  const icons = { dept: "🏢", company: "🌐", personal: "👤" };
-  const banner = document.createElement("div");
-  banner.className = `scope-banner scope-banner-${variant}`;
-  banner.innerHTML = `
-    <div class="scope-banner-icon">${icons[variant] || "ℹ️"}</div>
-    <div>
-      <div class="scope-banner-title">${title}</div>
-      ${detail ? `<div class="scope-banner-detail">${detail}</div>` : ""}
-    </div>
-  `;
-  return banner;
-}
-
 // Sidebar
 
 function buildSidebar({ navSections, navItems, activeId, onNav, account, emp, onLogout }) {

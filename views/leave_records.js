@@ -52,19 +52,6 @@ function renderLeaveRecords(db, account, onDbChange) {
       actionEl.children.length ? actionEl : null
     ));
 
-    if (supervisorView) {
-      const scope = scopeBannerProps(db, account);
-      if (scope) page.appendChild(buildScopeBanner(scope));
-    } else if (fullAdmin) {
-      page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
-    } else if (employeeView) {
-      page.appendChild(buildScopeBanner({
-        variant: "personal",
-        title: "Your leave requests",
-        detail: "You can file new leave, edit pending requests, and cancel before approval.",
-      }));
-    }
-
     // Filters card
     const card = document.createElement("div");
     card.className = "card";

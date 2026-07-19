@@ -50,19 +50,6 @@ function renderTimeLogClaims(db, account, onDbChange) {
       actionEl.children.length ? actionEl : null
     ));
 
-    if (supervisorView) {
-      const scope = scopeBannerProps(db, account);
-      if (scope) page.appendChild(buildScopeBanner(scope));
-    } else if (fullAdmin) {
-      page.appendChild(buildScopeBanner(scopeBannerProps(db, account)));
-    } else if (employeeView) {
-      page.appendChild(buildScopeBanner({
-        variant: "personal",
-        title: "Your claims only",
-        detail: "Claims are filed against your own time logs and reviewed by a supervisor.",
-      }));
-    }
-
     const card = document.createElement("div");
     card.className = "card";
 

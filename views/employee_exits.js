@@ -156,9 +156,8 @@ function renderEmployeeExits(db, account, onDbChange) {
       fEmp.textContent = data.employee_name;
     } else {
       // List employees
-      const activeEmps = db.employees.filter(e => {
-        return !exitRows.some(ex => ex.employee_id === e.employee_id);
-      });
+      const activeEmps = db.employees.filter(e => e.employment_status_name === 'Active');
+
       const empOpts = [["", "Select Employee"], ...activeEmps.map(e => [e.employee_id, `${e.first_name} ${e.last_name}`])];
       fEmp = makeSelect(empOpts, data.employee_id);
     }

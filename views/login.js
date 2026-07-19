@@ -8,7 +8,7 @@ function renderLogin(onLogin) {
   const features = [
     { title: "Clock In & Out",    desc: "Real-time attendance tracking with shift categories." },
     { title: "Leave Management",  desc: "File and approve leave requests in one place." },
-    { title: "Payroll Insights",  desc: "Estimated pay calculated per log entry." },
+    { title: "OT & Claims",      desc: "File overtime, holiday, and time correction claims." },
     { title: "Team Overview",     desc: "Admin dashboard across all departments." },
   ];
 
@@ -26,7 +26,7 @@ function renderLogin(onLogin) {
       </div>
       <div class="login-hero">
         <h2>Workforce<br>management<br>made simple.</h2>
-        <p>Track attendance, manage leave, and gain payroll insights — all from one clean dashboard.</p>
+        <p>Track attendance, manage leave, and file claims — all from one clean dashboard.</p>
       </div>
       <div class="login-features">
         ${features.map(f => `

@@ -35,11 +35,6 @@ function renderDashboard(db, account) {
     const displayName = emp ? emp.full_name : (account ? account.username : "Employee");
 
     page.appendChild(pageHeader(`Welcome, ${displayName}`, "Your personal overview"));
-    page.appendChild(buildScopeBanner({
-      variant: "personal",
-      title: "Self-service view",
-      detail: "You can clock in/out, view your time logs, file leave, and check your pay history.",
-    }));
     page.appendChild(buildEmployeeDashboard(db, account, db.dashboardStats, emp));
   }
 

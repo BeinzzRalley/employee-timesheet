@@ -46,6 +46,10 @@ function renderClockInOut(db, account, onDbChange) {
   let openLog = db.timeLogs.find(
     l => l.employee_id == empId && (l.work_date === today || l.clock_in.startsWith(today)) && !l.clock_out
   ) || null;
+  // Find today's closed log (for resume)
+  let closedLog = !openLog ? db.timeLogs.find(
+    l => l.employee_id == empId && (l.work_date === today || l.clock_in.startsWith(today)) && l.clock_out
+  ) || null : null;
 
   const wrap = document.createElement("div");
   wrap.style.display = "grid";
@@ -96,36 +100,66 @@ function renderClockInOut(db, account, onDbChange) {
 
   function refreshClock(currentLog) {
     openLog = currentLog;
+    // Refresh closedLog reference
+    closedLog = !currentLog ? db.timeLogs.find(
+      l => l.employee_id == empId && (l.work_date === today || l.clock_in.startsWith(today)) && l.clock_out
+    ) || null : null;
     statusArea.innerHTML = "";
     infoLine.textContent = "";
 
     if (!currentLog) {
-      // Not clocked in state
+      // Check if there's a closed log today (can resume)
+      const canResume = !!closedLog;
+
       const notClockedBadge = document.createElement("div");
       notClockedBadge.style.cssText = "display:inline-flex;align-items:center;gap:8px;background:#f1f5f9;border-radius:8px;padding:10px 16px;font-size:0.85rem;color:var(--text-muted);font-weight:500";
-      notClockedBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span> Not clocked in`;
+      if (canResume) {
+        notClockedBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span> Clocked out`;
+      } else {
+        notClockedBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span> Not clocked in`;
+      }
       statusArea.appendChild(notClockedBadge);
 
-      actionBtn.textContent = "Clock In";
-      actionBtn.style.background = "linear-gradient(135deg,#22c55e,#16a34a)";
+      // Show accumulated hours if resuming
+      if (canResume && closedLog.total_hours != null) {
+        const accInfo = document.createElement("div");
+        accInfo.style.cssText = "margin-top:10px;font-size:0.83rem;color:var(--text-muted)";
+        accInfo.textContent = `Today's total so far: ${Number(closedLog.total_hours).toFixed(2)}h`;
+        statusArea.appendChild(accInfo);
+      }
+
+      actionBtn.textContent = canResume ? "Resume Clock In" : "Clock In";
+      actionBtn.style.background = canResume
+        ? "linear-gradient(135deg,#f59e0b,#d97706)"
+        : "linear-gradient(135deg,#22c55e,#16a34a)";
       actionBtn.style.color = "#fff";
-      actionBtn.style.boxShadow = "0 4px 14px rgba(34,197,94,0.35)";
+      actionBtn.style.boxShadow = canResume
+        ? "0 4px 14px rgba(245,158,11,0.35)"
+        : "0 4px 14px rgba(34,197,94,0.35)";
+      actionBtn.disabled = false;
       actionBtn.onclick = async () => {
         actionBtn.disabled = true;
-        actionBtn.textContent = "Clocking in…";
+        actionBtn.textContent = canResume ? "Resuming…" : "Clocking in…";
         try {
           const result  = await clockInRequest();
           const normResult = { ...result, employee_id: empId };
-          const updated = [normResult, ...db.timeLogs];
+          // Update existing log or add new one
+          const existingIdx = db.timeLogs.findIndex(l => l.log_id === normResult.log_id);
+          let updated;
+          if (existingIdx >= 0) {
+            updated = db.timeLogs.map(l => l.log_id === normResult.log_id ? normResult : l);
+          } else {
+            updated = [normResult, ...db.timeLogs];
+          }
           db = { ...db, timeLogs: updated };
           onDbChange(db);
           refreshClock(normResult);
           refreshTodayLogs();
-          showToast("Clocked in successfully!", "success");
+          showToast(canResume ? "Resumed! Clock is running." : "Clocked in successfully!", "success");
         } catch (err) {
           showToast(err.message || "Clock-in failed.", "error");
           actionBtn.disabled = false;
-          actionBtn.textContent = "Clock In";
+          actionBtn.textContent = canResume ? "Resume Clock In" : "Clock In";
         }
       };
     } else {
@@ -141,17 +175,33 @@ function renderClockInOut(db, account, onDbChange) {
       statusBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${statusDot};display:inline-block;box-shadow:0 0 0 3px ${statusDot}33"></span> ${statusText}`;
       statusArea.appendChild(statusBadge);
 
+      // Resumed badge
+      if (currentLog.resumed_at) {
+        const resumedBadge = document.createElement("div");
+        resumedBadge.style.cssText = "display:inline-flex;align-items:center;gap:6px;background:#fef3c7;border-radius:8px;padding:8px 12px;font-size:0.78rem;color:#92400e;font-weight:500;margin-left:8px";
+        resumedBadge.textContent = `Resumed at ${fmtTime(currentLog.resumed_at)}`;
+        statusArea.appendChild(resumedBadge);
+      }
+
       // Duration counter
       const durationEl = document.createElement("div");
       durationEl.style.cssText = "margin-top:12px;font-size:0.85rem;color:var(--text-muted)";
       statusArea.appendChild(durationEl);
 
+      const accumulated = currentLog.accumulated_hours || 0;
+      const sessionStart = currentLog.resumed_at || currentLog.clock_in;
+
       function updateDuration() {
-        const diff = Math.floor((Date.now() - new Date(currentLog.clock_in).getTime()) / 1000);
-        const h = Math.floor(diff / 3600);
-        const m = Math.floor((diff % 3600) / 60);
-        const s = diff % 60;
-        durationEl.textContent = `Duration: ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+        const sessionSec = Math.floor((Date.now() - new Date(sessionStart).getTime()) / 1000);
+        const totalSec = sessionSec + Math.round(accumulated * 3600);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        let text = `Duration: ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+        if (accumulated > 0) {
+          text += ` (incl. ${accumulated.toFixed(2)}h previous)`;
+        }
+        durationEl.textContent = text;
       }
       updateDuration();
       const durTimer = setInterval(updateDuration, 1000);
@@ -183,7 +233,9 @@ function renderClockInOut(db, account, onDbChange) {
         }
       };
 
-      infoLine.textContent = `Clocked in at ${fmtTime(currentLog.clock_in)}`;
+      infoLine.textContent = currentLog.resumed_at
+        ? `Originally clocked in at ${fmtTime(currentLog.clock_in)} · Resumed at ${fmtTime(currentLog.resumed_at)}`
+        : `Clocked in at ${fmtTime(currentLog.clock_in)}`;
     }
   }
 
@@ -221,6 +273,9 @@ function renderClockInOut(db, account, onDbChange) {
       const row = document.createElement("div");
       row.style.cssText = "padding:12px 0;border-bottom:1px solid var(--border-light,#f1f5f9)";
       const isLate = l.status_label === "Late";
+      const resumeNote = l.resumed_at
+        ? `<div style="font-size:0.72rem;color:#92400e;margin-top:3px">↩ Resumed at ${fmtTime(l.resumed_at)}</div>`
+        : "";
       row.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="font-size:0.78rem;font-weight:600;color:${isLate?"#c2410c":"#15803d"}">${l.status_label || "—"}</span>
@@ -230,6 +285,7 @@ function renderClockInOut(db, account, onDbChange) {
           <span>In: <b>${fmtTime(l.clock_in)}</b></span>
           <span>Out: <b>${l.clock_out ? fmtTime(l.clock_out) : "—"}</b></span>
         </div>
+        ${resumeNote}
         ${l.total_hours != null ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${Number(l.total_hours).toFixed(2)} hrs</div>` : ""}
       `;
       todayLogsEl.appendChild(row);

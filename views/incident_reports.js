@@ -72,7 +72,7 @@ function renderIncidentReports(db, account, onDbChange) {
     toolbar.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px";
 
     const statusFilter = makeSelect(
-      [["", "All Statuses"], ["Pending", "Pending"], ["Confirmed", "Confirmed"], ["Dismissed", "Dismissed"]],
+      [["", "All Statuses"], ["Pending", "Pending"], ["Confirmed", "Confirmed"], ["Dismissed", "Dismissed"], ["Supervisor Approved", "Supervisor Approved"]],
       filterStatus
     );
     statusFilter.addEventListener("change", e => {
@@ -94,6 +94,7 @@ function renderIncidentReports(db, account, onDbChange) {
     if (filterStatus === "Pending")   params.set("validation_status_id", "1");
     if (filterStatus === "Confirmed") params.set("validation_status_id", "2");
     if (filterStatus === "Dismissed") params.set("validation_status_id", "3");
+    if (filterStatus === "Supervisor Approved") params.set("validation_status_id", "4");
 
     let reports;
     try {
@@ -119,13 +120,25 @@ function renderIncidentReports(db, account, onDbChange) {
       actions.appendChild(viewBtn);
 
       const isOwnReport = r.reported_by_account_id === account.account_id;
-      if (validatorView && r.validation_status === "Pending" && !isOwnReport) {
-        const confirmBtn = document.createElement("button");
-        confirmBtn.className = "btn btn-ghost btn-sm";
-        confirmBtn.style.color = "var(--red, #ef4444)";
-        confirmBtn.textContent = "Confirm";
-        confirmBtn.addEventListener("click", () => resolveReport(r, 2));
-        actions.appendChild(confirmBtn);
+      const canAct = validatorView && (r.validation_status === "Pending" || r.validation_status === "Supervisor Approved") && !isOwnReport;
+      if (canAct) {
+        if (isSupervisor(account) && r.validation_status === "Pending") {
+          // Supervisors recommend (→4), not final confirm
+          const recBtn = document.createElement("button");
+          recBtn.className = "btn btn-ghost btn-sm";
+          recBtn.style.color = "var(--red, #ef4444)";
+          recBtn.textContent = "Recommend";
+          recBtn.addEventListener("click", () => resolveReport(r, 4));
+          actions.appendChild(recBtn);
+        } else if (!isSupervisor(account)) {
+          // HR/Admin can final confirm
+          const confirmBtn = document.createElement("button");
+          confirmBtn.className = "btn btn-ghost btn-sm";
+          confirmBtn.style.color = "var(--red, #ef4444)";
+          confirmBtn.textContent = "Confirm";
+          confirmBtn.addEventListener("click", () => resolveReport(r, 2));
+          actions.appendChild(confirmBtn);
+        }
 
         const dismissBtn = document.createElement("button");
         dismissBtn.className = "btn btn-ghost btn-sm";

@@ -161,7 +161,7 @@ function renderView(viewId, db, account, onDbChange) {
     case "employment_history":
       return renderEmploymentHistory(db, account, onDbChange);
     case "employee_exits":
-      return (isSystemAdmin(account) || isPayrollAdmin(account) || isSupervisor(account))
+      return (isSystemAdmin(account) || isHumanResources(account) || isSupervisor(account))
         ? renderEmployeeExits(db, account, onDbChange)
         : renderDashboard(db, account);
     case "employment_status":

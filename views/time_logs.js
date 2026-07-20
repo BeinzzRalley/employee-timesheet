@@ -693,7 +693,7 @@ function openEditModal(log, db, onSaved) {
   fValid.type = "checkbox";
   fValid.checked = log.hours_valid !== false;
   validWrap.appendChild(fValid);
-  validWrap.appendChild(document.createTextNode("Hours valid for payroll"));
+  validWrap.appendChild(document.createTextNode("Hours valid for labor cost computation"));
 
   const hoursPreview = document.createElement("div");
   hoursPreview.style.cssText = "font-size:0.82rem;color:var(--text-muted);margin-top:-8px";

@@ -65,7 +65,7 @@ async function fetchAllData() {
     safe(apiRequest("/leave_records.php")),
     safe(apiRequest("/accounts.php")),
     safe(apiRequest("/time_logs.php")),
-    safe(apiRequest("/dashboard.php")),
+    apiRequest("/dashboard.php").catch(() => null),
     safe(apiRequest("/leave_types.php")),
     safe(apiRequest("/employment_status.php")),
     safe(apiRequest("/work_schedules.php")),

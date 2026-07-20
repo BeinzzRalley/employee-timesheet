@@ -1,7 +1,3 @@
-// Employee - personal clock status, hours, leave counts
-// Supervisor - admin-style dashboard only to their dept
-// System Admin - overview of company
-
 function renderDashboard(db, account) {
   const page = document.createElement("div");
   page.className = "page";
@@ -248,7 +244,9 @@ function buildEmployeeDashboard(db, account, stats, emp) {
   const grid = document.createElement("div");
   grid.className = "stat-grid";
 
-  if (stats) {
+  const hasStats = stats && typeof stats === "object" && !Array.isArray(stats);
+
+  if (hasStats) {
     const clockedColor = stats.clocked_in ? "emerald" : "sky";
     const clockedLabel = stats.clocked_in ? "Clocked In" : "Not Clocked In";
     const clockSub = stats.clocked_in

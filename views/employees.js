@@ -257,19 +257,18 @@ const fRate    = makeInput("number", data.hourly_rate ?? 0, "0.00");
     voluntaryLabel.append(" Voluntary exit");
     fieldReason.appendChild(voluntaryLabel);
 
+    const errEl = document.createElement("div");
+    errEl.className = "alert-error";
+    errEl.style.display = "none";
+    errEl.style.marginTop = "12px";
+    body.appendChild(errEl);
+
     body.insertBefore(fieldReason, errEl);
 
     fStatus.addEventListener("change", () => {
       const showReason = wasActive && fStatus.value != defaultStatusId;
       fieldReason.style.display = showReason ? "" : "none";
     });
-
-
-    const errEl = document.createElement("div");
-    errEl.className = "alert-error";
-    errEl.style.display = "none";
-    errEl.style.marginTop = "12px";
-    body.appendChild(errEl);
 
     const footer = document.createElement("div");
     footer.className = "modal-footer";

@@ -143,6 +143,11 @@ function renderEmployees(db, account, onDbChange) {
         editBtn.innerHTML = `${icons.pencil} Edit`;
         editBtn.addEventListener("click", () => openEmployeeModal(e));
 
+        const schedBtn = document.createElement("button");
+        schedBtn.className = "btn btn-ghost btn-sm";
+        schedBtn.innerHTML = `${icons.shift || ""} Assign Schedule`;
+        schedBtn.addEventListener("click", () => openAssignScheduleModal(e));
+
         const isActive = e.employment_status === "Active";
         const toggleBtn = document.createElement("button");
         toggleBtn.className = "btn btn-ghost btn-sm";
@@ -154,6 +159,7 @@ function renderEmployees(db, account, onDbChange) {
         actions.style.display = "flex";
         actions.style.gap = "6px";
         actions.appendChild(editBtn);
+        actions.appendChild(schedBtn);
         actions.appendChild(toggleBtn);
         actionsCell = actions;
       }
@@ -291,8 +297,13 @@ const fRate    = makeInput("number", data.hourly_rate ?? 0, "0.00");
     saveBtn.addEventListener("click", async () => {
       const firstName = fFirst.value.trim();
       const email     = fEmail.value.trim();
-      if (!firstName || !email) {
-        errEl.textContent = "First Name and Email are required.";
+      if (!firstName) {
+        errEl.textContent = "First Name is required.";
+        errEl.style.display = "block";
+        return;
+      }
+      if (!isEdit && !email) {
+        errEl.textContent = "Email is required for new employees.";
         errEl.style.display = "block";
         return;
       }
@@ -340,6 +351,61 @@ const fRate    = makeInput("number", data.hourly_rate ?? 0, "0.00");
         errEl.textContent = err.message || "Could not save employee.";
         errEl.style.display = "block";
       } finally {
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  function openAssignScheduleModal(emp) {
+    if (!canEdit) return;
+
+    const body = document.createElement("div");
+    body.style.cssText = "display:flex;flex-direction:column;gap:14px";
+
+    const note = document.createElement("p");
+    note.className = "text-sm text-gray";
+    note.textContent = `Set the work schedule for ${employeeName(emp)}.`;
+    body.appendChild(note);
+
+    const schedOpts = (db.workSchedules || []).map(s => [s.schedule_id, s.schedule_name]);
+    const fSched = makeSelect(schedOpts, emp.schedule_id || "");
+    body.appendChild(buildField("Work Schedule", fSched));
+
+    const errEl = document.createElement("div");
+    errEl.className = "alert-error";
+    errEl.style.display = "none";
+    body.appendChild(errEl);
+
+    const footer = document.createElement("div");
+    footer.className = "modal-footer";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "btn btn-outline";
+    cancelBtn.textContent = "Cancel";
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "btn btn-primary";
+    saveBtn.innerHTML = `${icons.check} Save Schedule`;
+    footer.appendChild(cancelBtn);
+    footer.appendChild(saveBtn);
+    body.appendChild(footer);
+
+    const { close } = openModal({ title: "Assign Work Schedule", body });
+    cancelBtn.addEventListener("click", close);
+
+    saveBtn.addEventListener("click", async () => {
+      errEl.style.display = "none";
+      saveBtn.disabled = true;
+      try {
+        await updateEmployeeRequest(emp.employee_id, {
+          schedule_id: Number(fSched.value) || null,
+        });
+        db.employees = await apiRequest("/employees.php");
+        onDbChange(db);
+        close();
+        showToast(`Work schedule updated for ${employeeName(emp)}.`, "success");
+        refresh();
+      } catch (err) {
+        errEl.textContent = err.message || "Could not update work schedule.";
+        errEl.style.display = "block";
         saveBtn.disabled = false;
       }
     });
